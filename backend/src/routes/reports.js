@@ -95,11 +95,11 @@ function send(req, res, name, data, { title, totals }) {
   res.send('﻿' + lines.map((l) => l.map(csvCell).join(',')).join('\r\n'))
 }
 
-router.get('/attendance', (req, res) => {
+router.get('/attendance', async (req, res) => {
   const { from, to } = range(req.query)
   const userId = Number(req.query.user_id) || null
   // rejected check-ins do not count; deactivated users appear only when they have records
-  const rows = db.prepare(`SELECT u.emp_code, u.name, u.department,
+  const rows = await db.prepare(`SELECT u.emp_code, u.name, u.department,
       COUNT(a.id) days,
       COALESCE(SUM(a.mode = 'office'),0) office,
       COALESCE(SUM(a.mode = 'building'),0) building,
@@ -121,11 +121,11 @@ router.get('/attendance', (req, res) => {
   })
 })
 
-router.get('/leaves', (req, res) => {
+router.get('/leaves', async (req, res) => {
   const { from, to } = range(req.query)
-  const rows = db.prepare(`SELECT u.emp_code, u.name, u.department, l.type, l.start_date, l.end_date, l.days, l.reason, l.status
+  const rows = (await db.prepare(`SELECT u.emp_code, u.name, u.department, l.type, l.start_date, l.end_date, l.days, l.reason, l.status
     FROM leaves l JOIN users u ON u.id = l.user_id
-    WHERE l.start_date <= ? AND l.end_date >= ? ORDER BY l.start_date, u.emp_code`).all(to, from)
+    WHERE l.start_date <= ? AND l.end_date >= ? ORDER BY l.start_date, u.emp_code`).all(to, from))
     .map((r) => ({ ...r, type_label: LEAVE_TYPES[r.type]?.label || r.type, status_label: STATUS_TH[r.status] || r.status }))
   const approved = rows.filter((r) => r.status === 'approved')
   return send(req, res, `leaves_${from}_${to}`, {
@@ -139,11 +139,11 @@ router.get('/leaves', (req, res) => {
   })
 })
 
-router.get('/ot', (req, res) => {
+router.get('/ot', async (req, res) => {
   const { from, to } = range(req.query)
-  const rows = db.prepare(`SELECT u.emp_code, u.name, u.department, o.date, o.start_time, o.end_time, o.hours, o.amount, o.reason, o.status
+  const rows = (await db.prepare(`SELECT u.emp_code, u.name, u.department, o.date, o.start_time, o.end_time, o.hours, o.amount, o.reason, o.status
     FROM ot_requests o JOIN users u ON u.id = o.user_id
-    WHERE o.date BETWEEN ? AND ? ORDER BY o.date, u.emp_code`).all(from, to)
+    WHERE o.date BETWEEN ? AND ? ORDER BY o.date, u.emp_code`).all(from, to))
     .map((r) => ({ ...r, status_label: STATUS_TH[r.status] || r.status }))
   const approved = rows.filter((r) => r.status === 'approved')
   return send(req, res, `ot_${from}_${to}`, {
@@ -157,19 +157,20 @@ router.get('/ot', (req, res) => {
   })
 })
 
-router.get('/payroll', (req, res) => {
+router.get('/payroll', async (req, res) => {
   const month = String(req.query.month || toDateStr().slice(0, 7))
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw httpError(400, 'เดือนไม่ถูกต้อง')
-  const settings = getSettings()
+  const settings = await getSettings()
   // staff not yet started in that month are excluded; deactivated users appear only when they have OT/unpaid leave
-  const rows = db.prepare('SELECT * FROM users ORDER BY emp_code').all()
+  const users = (await db.prepare('SELECT * FROM users ORDER BY emp_code').all())
     .filter((u) => !u.start_date || u.start_date.slice(0, 7) <= month)
-    .map((u) => {
-      const p = monthlyPay(u, month, settings)
-      return { active: u.active, emp_code: u.emp_code, name: u.name, department: u.department, base: p.base, ot_hours: p.otHours, ot: p.ot, deduction: p.deduction, total: p.total }
-    })
-    .filter((r) => r.active || r.ot > 0 || r.deduction > 0)
-    .map(({ active, ...r }) => r)
+  const rows = []
+  for (const u of users) {
+    const p = await monthlyPay(u, month, settings)
+    if (u.active || p.ot > 0 || p.deduction > 0) {
+      rows.push({ emp_code: u.emp_code, name: u.name, department: u.department, base: p.base, ot_hours: p.otHours, ot: p.ot, deduction: p.deduction, total: p.total })
+    }
+  }
   return send(req, res, `payroll_${month}`, {
     columns: [['emp_code', 'รหัส'], ['name', 'ชื่อ'], ['department', 'แผนก'], ['base', 'เงินเดือน'], ['ot_hours', 'OT (ชม.)'],
       ['ot', 'ค่า OT'], ['deduction', 'หักลาไม่รับเงิน'], ['total', 'รวมสุทธิ']],
