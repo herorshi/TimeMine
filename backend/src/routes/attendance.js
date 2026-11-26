@@ -1,10 +1,12 @@
 import { Router } from 'express'
+import { randomUUID } from 'node:crypto'
 import { db } from '../db/index.js'
 import { auth, requireRole } from '../lib/auth.js'
 import { httpError } from '../lib/http.js'
 import { toDateStr, toDateTimeStr, lateMinutes } from '../lib/time.js'
 import { getSettings } from '../lib/settings.js'
-import { verifyFace, isDescriptor } from '../lib/face.js'
+import { identify, isDescriptor, readPhoto } from '../lib/face.js'
+import { saveImage, deleteImage } from '../lib/storage.js'
 import { notifyAdmins } from '../lib/line.js'
 
 const MODES = ['office', 'building', 'wfh']
@@ -36,25 +38,30 @@ router.post('/check-in', async (req, res) => {
 
   let faceVerified = 0
   let faceDistance = null
+  let facePhotoUrl = null
   if (mode === 'building') {
     if (!isDescriptor(descriptor)) throw httpError(400, 'กรุณาสแกนใบหน้า')
-    const face = await verifyFace(req.user, descriptor)
-    if (!face.enrolled) throw httpError(400, 'ยังไม่ได้ลงทะเบียนใบหน้า กรุณาลงทะเบียนที่หน้าข้อมูลส่วนตัว')
-    if (!face.match) throw httpError(400, 'ใบหน้าไม่ตรงกับที่ลงทะเบียนไว้ กรุณาลองใหม่')
+    const photo = readPhoto(req.body.photo)
+    if (!req.user.face_descriptor) throw httpError(400, 'ยังไม่ได้ลงทะเบียนใบหน้า กรุณาติดต่อผู้ดูแลระบบ')
+    const face = await identify(descriptor, { expectUserId: req.user.id, record: true })
     faceVerified = 1
     faceDistance = face.distance
+    facePhotoUrl = await saveImage(photo, 'image/jpeg', `faces/checkin-${req.user.id}-${Date.now()}-${randomUUID()}`)
   }
 
   const now = new Date()
   const checkInAt = toDateTimeStr(now)
   const settings = await getSettings()
   // a concurrent check-in can pass the todayRow check above: UNIQUE (user_id, date) decides
-  const info = await db.prepare(`INSERT INTO attendance (user_id, date, mode, check_in_at, status, late_minutes, face_verified, face_distance, note)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (user_id, date) DO NOTHING`).run(
+  const info = await db.prepare(`INSERT INTO attendance (user_id, date, mode, check_in_at, status, late_minutes, face_verified, face_distance, face_photo_url, note)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (user_id, date) DO NOTHING`).run(
     req.user.id, toDateStr(now), mode, checkInAt, mode === 'wfh' ? 'pending' : 'approved',
-    lateMinutes(checkInAt, settings), faceVerified, faceDistance, String(note || '').trim() || null,
+    lateMinutes(checkInAt, settings), faceVerified, faceDistance, facePhotoUrl, String(note || '').trim() || null,
   )
-  if (!info.changes) throw httpError(400, 'วันนี้ลงเวลาเข้างานแล้ว')
+  if (!info.changes) {
+    await deleteImage(facePhotoUrl)
+    throw httpError(400, 'วันนี้ลงเวลาเข้างานแล้ว')
+  }
   const row = await byId(info.lastInsertRowid)
   res.status(201).json(row)
   notifyAdmins(checkInMessage(req.user, row)) // fire-and-forget: never rejects
