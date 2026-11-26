@@ -15,6 +15,15 @@ const target = ref(null)
 const blank = { id: null, title: '', body: '', type: 'news', event_date: '', pinned: false }
 const form = reactive({ ...blank })
 
+const typeLabel = (type) => (type === 'event' ? 'กิจกรรม' : 'ข่าว')
+// value/text mirror what each cell shows, so the column filters and sorting match the screen
+const columns = [
+  { key: 'title', label: 'หัวข้อ', class: 'min-w-[12rem] max-w-xs break-words font-medium text-slate-800' },
+  { key: 'type', label: 'ประเภท', filter: 'select', options: [{ value: 'news', label: 'ข่าว' }, { value: 'event', label: 'กิจกรรม' }], text: (a) => typeLabel(a.type) },
+  { key: 'event_date', label: 'วันกิจกรรม', filter: 'date', text: (a) => fmtDate(a.event_date), class: 'whitespace-nowrap' },
+  { key: 'created_at', label: 'สร้างเมื่อ', filter: 'date', text: (a) => fmtDateTime(a.created_at), class: 'whitespace-nowrap text-slate-500' },
+]
+
 async function load() {
   try {
     items.value = (await api.get('/announcements')).data
@@ -68,28 +77,17 @@ async function remove() {
       <button class="btn-primary" @click="openForm()">+ สร้างประกาศ</button>
     </PageHeader>
 
-    <LoadingBlock v-if="loading" />
-    <div v-else-if="!items.length" class="card"><EmptyState icon="📢" text="ยังไม่มีประกาศ" /></div>
-    <div v-else class="table-wrap">
-      <table class="table">
-        <thead><tr><th>หัวข้อ</th><th>ประเภท</th><th>วันกิจกรรม</th><th>สร้างเมื่อ</th><th class="!text-right">จัดการ</th></tr></thead>
-        <tbody>
-          <tr v-for="a in items" :key="a.id">
-            <td class="min-w-[12rem] max-w-xs break-words font-medium text-slate-800"><span v-if="a.pinned" title="ปักหมุด">📌 </span>{{ a.title }}</td>
-            <td><StatusBadge :label="a.type === 'event' ? 'กิจกรรม' : 'ข่าว'" :color="a.type === 'event' ? 'violet' : 'sky'" /></td>
-            <td class="whitespace-nowrap">{{ fmtDate(a.event_date) }}</td>
-            <td class="whitespace-nowrap text-slate-500">{{ fmtDateTime(a.created_at) }}</td>
-            <td>
-              <div class="flex justify-end gap-2">
-                <button class="btn-secondary btn-sm whitespace-nowrap" :disabled="pinning !== null" @click="togglePin(a)"><Spinner v-if="pinning === a.id" class="h-3 w-3" />{{ a.pinned ? 'เลิกปักหมุด' : 'ปักหมุด' }}</button>
-                <button class="btn-secondary btn-sm whitespace-nowrap" @click="openForm(a)">แก้ไข</button>
-                <button class="btn-danger btn-sm whitespace-nowrap" @click="target = a; deleteOpen = true">ลบ</button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <DataTable :columns="columns" :rows="items" row-key="id" :loading="loading" empty-text="ยังไม่มีประกาศ">
+      <template #cell-title="{ row }"><span v-if="row.pinned" title="ปักหมุด">📌 </span>{{ row.title }}</template>
+      <template #cell-type="{ row }"><StatusBadge :label="typeLabel(row.type)" :color="row.type === 'event' ? 'violet' : 'sky'" /></template>
+      <template #actions="{ row }">
+        <div class="flex justify-end gap-2">
+          <button class="btn-secondary btn-sm whitespace-nowrap" :disabled="pinning !== null" @click="togglePin(row)"><Spinner v-if="pinning === row.id" class="h-3 w-3" />{{ row.pinned ? 'เลิกปักหมุด' : 'ปักหมุด' }}</button>
+          <button class="btn-secondary btn-sm whitespace-nowrap" @click="openForm(row)">แก้ไข</button>
+          <button class="btn-danger btn-sm whitespace-nowrap" @click="target = row; deleteOpen = true">ลบ</button>
+        </div>
+      </template>
+    </DataTable>
 
     <AppModal v-model="formOpen" :title="form.id ? 'แก้ไขประกาศ' : 'สร้างประกาศ'" size="lg">
       <form id="announcement-form" class="space-y-4" @submit.prevent="save">
