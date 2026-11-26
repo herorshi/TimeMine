@@ -146,6 +146,21 @@ CREATE TABLE IF NOT EXISTS warnings (
   cancel_reason TEXT, cancelled_by INTEGER REFERENCES users(id), cancelled_at TEXT
 );
 
+CREATE TABLE IF NOT EXISTS kpi_evaluations (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  year INTEGER NOT NULL,
+  attendance_score REAL NOT NULL DEFAULT 0,   -- 0-100, computed from attendance/late/absence/warnings
+  quality INTEGER, productivity INTEGER, teamwork INTEGER, responsibility INTEGER, -- 1-5 each
+  total_score REAL NOT NULL DEFAULT 0,        -- 0-100 weighted
+  grade TEXT,                                 -- A/B/C/D/F
+  comment TEXT,
+  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','final')),
+  evaluator_id INTEGER REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  UNIQUE (user_id, year)
+);
 CREATE TABLE IF NOT EXISTS role_permissions (role TEXT NOT NULL, perm TEXT NOT NULL, allowed INTEGER NOT NULL, PRIMARY KEY (role, perm));
 CREATE TABLE IF NOT EXISTS user_permissions (user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, perm TEXT NOT NULL, allowed INTEGER NOT NULL, PRIMARY KEY (user_id, perm));
 `)

@@ -19,6 +19,7 @@ export const PERMISSIONS = [
   { key: 'employees.manage', label: 'จัดการพนักงาน', group: 'admin' },
   { key: 'reports.view', label: 'ดูรายงาน', group: 'admin' },
   { key: 'settings.manage', label: 'ตั้งค่าระบบ', group: 'admin' },
+  { key: 'kpi.manage', label: 'ประเมิน KPI พนักงาน', group: 'admin' },
 ]
 const KEYS = new Set(PERMISSIONS.map((p) => p.key))
 const GROUP = Object.fromEntries(PERMISSIONS.map((p) => [p.key, p.group]))
@@ -71,6 +72,7 @@ const RULES = [
   { m: /.*/, re: /^\/users(?!\/me(\/|$))(\/.*)?$/, perm: 'employees.manage' },
   { m: /.*/, re: /^\/reports(\/.*)?$/, perm: 'reports.view' },
   { m: 'PUT', re: /^\/settings$/, perm: 'settings.manage' },
+  { m: /.*/, re: /^\/kpi\/(evaluations|candidates)(\/.*)?$/, perm: 'kpi.manage' },
 ]
 const SECRET = process.env.JWT_SECRET || 'dev-only-change-me'
 

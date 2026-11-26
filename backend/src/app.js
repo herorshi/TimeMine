@@ -20,6 +20,7 @@ import statsRouter from './routes/stats.js'
 import dashboardRouter from './routes/dashboard.js'
 import passwordRouter from './routes/password.js'
 import permissionsRouter from './routes/permissions.js'
+import kpiRouter from './routes/kpi.js'
 import { permissionGate } from './lib/permissions.js'
 import { apiLimiter, passwordLimiter, isProduction } from './lib/security.js'
 
@@ -59,6 +60,7 @@ app.use('/api/reports', reportsRouter)
 app.use('/api/stats', statsRouter)
 app.use('/api/dashboard', dashboardRouter)
 app.use('/api/permissions', permissionsRouter)
+app.use('/api/kpi', kpiRouter)
 
 app.use((_req, res) => res.status(404).json({ error: 'not found' }))
 app.use((err, _req, res, _next) => {
