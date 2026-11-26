@@ -4,6 +4,7 @@ import { apiError, fmtDate, fmtDateTime, dayjs } from '~/utils/format'
 
 const api = useApi()
 const toast = useToast()
+const auth = useAuthStore()
 
 const thisYear = dayjs().year()
 const years = [thisYear + 1, thisYear, thisYear - 1, thisYear - 2]
@@ -95,7 +96,7 @@ const range = (r) => (r.start_date === r.end_date ? fmtDate(r.start_date) : `${f
       <select v-model.number="year" class="input !w-auto" aria-label="ปีของโควตา">
         <option v-for="y in years" :key="y" :value="y">ปี {{ y + 543 }}</option>
       </select>
-      <button class="btn-primary" :disabled="loading || !types.length" @click="openForm">+ ขอลา</button>
+      <button v-if="auth.can('leave.request')" class="btn-primary" :disabled="loading || !types.length" @click="openForm">+ ขอลา</button>
     </PageHeader>
 
     <LoadingBlock v-if="loading" />
