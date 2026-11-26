@@ -1,6 +1,5 @@
 <script setup>
 // TODO: implemented by its ARP issue — see docs/api.md
-)}
 </script>
 
 <template>

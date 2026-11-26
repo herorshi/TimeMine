@@ -1,6 +1,6 @@
 <script setup>
 // TODO: implemented by its ARP issue — see docs/api.md
-definePageMeta({ roles: ['admin'] )}
+definePageMeta({ roles: ['admin'] })
 </script>
 
 <template>
