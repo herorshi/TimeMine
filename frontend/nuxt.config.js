@@ -2,6 +2,8 @@ export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   ssr: false, // SPA: camera, localStorage token, no SSR needed for an internal tool
   devtools: { enabled: false },
+  // components/ui/AppModal.vue is <AppModal>, not <UiAppModal>
+  components: [{ path: '~/components', pathPrefix: false }],
   modules: ['@nuxtjs/tailwindcss', '@pinia/nuxt', '@vueuse/nuxt'],
   css: ['~/assets/css/main.css'],
   runtimeConfig: {
