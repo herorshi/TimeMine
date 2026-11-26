@@ -113,7 +113,7 @@ async function savePassword() {
     <AppModal v-model="editOpen" title="แก้ไขข้อมูลส่วนตัว">
       <form id="profile-form" class="space-y-3" @submit.prevent="saveProfile">
         <div><label class="label">ชื่อ-นามสกุล</label><input v-model="form.name" class="input" required /></div>
-        <div><label class="label">เบอร์โทร</label><input v-model="form.phone" type="tel" class="input" /></div>
+        <div><label class="label">เบอร์โทร</label><PhoneInput v-model="form.phone" /></div>
         <div><label class="label">วันเกิด</label><DateInput v-model="form.birthdate" clearable /></div>
         <div><label class="label">ที่อยู่</label><textarea v-model="form.address" rows="3" class="input" /></div>
         <div><label class="label">ลิงก์รูปโปรไฟล์</label><input v-model="form.avatar_url" type="url" class="input" placeholder="https://..." /></div>
