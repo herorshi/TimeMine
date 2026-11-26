@@ -1,4 +1,5 @@
 <script setup>
+import { STATUS } from '~/utils/constants'
 import { fmtDate, fmtMoney, fmtNumber, todayStr, apiError, dayjs } from '~/utils/format'
 
 const MONTHLY_CAP = 36 // hours
@@ -72,6 +73,15 @@ async function cancel() {
     await load()
   }
 }
+
+const columns = [
+  { key: 'date', label: 'วันที่', filter: 'date', text: (r) => fmtDate(r.date), class: 'whitespace-nowrap' },
+  { key: 'time', label: 'เวลา', value: (r) => `${r.start_time} - ${r.end_time}`, class: 'whitespace-nowrap' },
+  { key: 'hours', label: 'ชั่วโมง', text: (r) => fmtNumber(r.hours) },
+  { key: 'reason', label: 'เหตุผล', class: 'min-w-[12rem] break-words' },
+  { key: 'status', label: 'สถานะ', filter: 'select', text: (r) => STATUS[r.status]?.label || r.status },
+  { key: 'amount', label: 'เงิน OT', value: (r) => (r.status === 'approved' ? r.amount : null), text: (r) => (r.status === 'approved' ? fmtMoney(r.amount) : '-'), class: 'whitespace-nowrap' },
+]
 </script>
 
 <template>
@@ -93,28 +103,15 @@ async function cancel() {
         <ProgressBar :value="Math.round(summary.hours * 100) / 100" :max="MONTHLY_CAP" label="ชั่วโมง OT เดือนนี้เทียบเพดาน" suffix=" ชม." :color="summary.hours >= MONTHLY_CAP ? 'rose' : 'violet'" />
       </div>
 
-      <div v-if="!rows.length" class="card"><EmptyState icon="🌙" text="ยังไม่มีคำขอ OT" /></div>
-      <div v-else class="table-wrap">
-        <table class="table">
-          <thead>
-            <tr><th>วันที่</th><th>เวลา</th><th>ชั่วโมง</th><th>เหตุผล</th><th>สถานะ</th><th>เงิน OT</th><th /></tr>
-          </thead>
-          <tbody>
-            <tr v-for="r in rows" :key="r.id">
-              <td class="whitespace-nowrap">{{ fmtDate(r.date) }}</td>
-              <td class="whitespace-nowrap">{{ r.start_time }} - {{ r.end_time }}</td>
-              <td>{{ fmtNumber(r.hours) }}</td>
-              <td class="min-w-[12rem]">{{ r.reason }}</td>
-              <td>
-                <StatusBadge :status="r.status" />
-                <p v-if="r.status === 'rejected' && r.reject_reason" class="mt-1 min-w-[10rem] text-xs text-rose-600">เหตุผล: {{ r.reject_reason }}</p>
-              </td>
-              <td class="whitespace-nowrap">{{ r.status === 'approved' ? fmtMoney(r.amount) : '-' }}</td>
-              <td><button v-if="r.status === 'pending'" class="btn-secondary btn-sm whitespace-nowrap" @click="askCancel(r)">ยกเลิก</button></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <DataTable :columns="columns" :rows="rows" empty-text="ยังไม่มีคำขอ OT">
+        <template #cell-status="{ row }">
+          <StatusBadge :status="row.status" />
+          <p v-if="row.status === 'rejected' && row.reject_reason" class="mt-1 min-w-[10rem] text-xs text-rose-600">เหตุผล: {{ row.reject_reason }}</p>
+        </template>
+        <template #actions="{ row }">
+          <button v-if="row.status === 'pending'" class="btn-secondary btn-sm whitespace-nowrap" @click="askCancel(row)">ยกเลิก</button>
+        </template>
+      </DataTable>
     </template>
 
     <AppModal v-model="formOpen" title="ขอทำ OT">
