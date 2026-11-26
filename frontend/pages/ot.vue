@@ -82,7 +82,7 @@ async function cancel() {
     <LoadingBlock v-if="loading" />
     <template v-else>
       <div class="mb-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="ชั่วโมง OT เดือนนี้ (อนุมัติแล้ว)" :value="`${fmtNumber(summary.hours)} ชม.`" icon="🌙" tone="violet" />
+        <StatCard label="ชั่วโมง OT เดือนนี้" :value="`${fmtNumber(summary.hours)} ชม.`" hint="อนุมัติแล้ว" icon="🌙" tone="violet" />
         <StatCard label="เงิน OT เดือนนี้" :value="fmtMoney(summary.amount)" icon="💰" />
         <StatCard label="คำขอรออนุมัติ" :value="`${summary.pending} รายการ`" icon="⏳" tone="amber" />
         <StatCard label="OT รวมปีนี้" :value="fmtMoney(summary.year_amount)" :hint="`${fmtNumber(summary.year_hours)} ชม.`" icon="📅" tone="sky" />
