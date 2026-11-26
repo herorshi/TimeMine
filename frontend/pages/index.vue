@@ -22,6 +22,8 @@ const greeting = computed(() => {
 })
 
 const today = computed(() => data.value?.today)
+// an existing record keeps the CTA: check-out / status stay reachable without checkin.* permissions
+const showCta = computed(() => !!today.value || ['office', 'building', 'wfh'].some((m) => auth.can(`checkin.${m}`)))
 const lateToday = computed(() => (today.value && today.value.status !== 'rejected' ? today.value.late_minutes : 0))
 const cta = computed(() => {
   const t = today.value
@@ -43,10 +45,10 @@ const pendingCards = computed(() => {
   const p = data.value?.pending
   if (!p) return []
   return [
-    { to: '/admin/attendance', label: 'WFH รออนุมัติ', count: p.wfh, icon: '🏠' },
-    { to: '/admin/leaves', label: 'การลารออนุมัติ', count: p.leaves, icon: '🌴' },
-    { to: '/admin/ot', label: 'OT รออนุมัติ', count: p.ot, icon: '🌙' },
-  ]
+    { to: '/admin/attendance', perm: 'approve.attendance', label: 'WFH รออนุมัติ', count: p.wfh, icon: '🏠' },
+    { to: '/admin/leaves', perm: 'approve.leaves', label: 'การลารออนุมัติ', count: p.leaves, icon: '🌴' },
+    { to: '/admin/ot', perm: 'approve.ot', label: 'OT รออนุมัติ', count: p.ot, icon: '🌙' },
+  ].filter((c) => auth.can(c.perm))
 })
 
 function openDetail(a) {
@@ -85,7 +87,7 @@ onMounted(load)
         ⚠️ วันนี้คุณมาสาย {{ fmtMinutes(lateToday) }}
       </div>
 
-      <NuxtLink to="/checkin" class="flex items-center gap-4 rounded-2xl bg-brand-600 p-5 text-white shadow-sm transition hover:bg-brand-700 sm:p-6">
+      <NuxtLink v-if="showCta" to="/checkin" class="flex items-center gap-4 rounded-2xl bg-brand-600 p-5 text-white shadow-sm transition hover:bg-brand-700 sm:p-6">
         <span class="text-4xl">{{ cta.icon }}</span>
         <div class="min-w-0 flex-1">
           <p class="text-lg font-bold sm:text-2xl">{{ cta.title }}</p>
@@ -117,7 +119,7 @@ onMounted(load)
         <section class="card min-w-0">
           <div class="mb-4 flex items-center justify-between gap-2">
             <h2 class="font-semibold text-slate-800">วันลาที่ใช้ไปปีนี้</h2>
-            <NuxtLink to="/leave" class="text-sm font-medium text-brand-700 hover:underline">ขอลา →</NuxtLink>
+            <NuxtLink v-if="auth.can('leave.request')" to="/leave" class="text-sm font-medium text-brand-700 hover:underline">ขอลา →</NuxtLink>
           </div>
           <div class="space-y-4">
             <ProgressBar v-for="b in quotaLeaves" :key="b.type" :value="b.used" :max="b.quota" :label="`${LEAVE_TYPES[b.type]?.icon || ''} ${b.label} (เหลือ ${Math.max(0, b.quota - b.used)} วัน)`" :color="barColor(b)" suffix=" วัน" />
@@ -132,7 +134,7 @@ onMounted(load)
           <section class="card">
             <div class="flex items-center justify-between gap-2">
               <h2 class="font-semibold text-slate-800">💰 OT เดือนนี้</h2>
-              <NuxtLink to="/ot" class="text-sm font-medium text-brand-700 hover:underline">ขอ OT →</NuxtLink>
+              <NuxtLink v-if="auth.can('ot.request')" to="/ot" class="text-sm font-medium text-brand-700 hover:underline">ขอ OT →</NuxtLink>
             </div>
             <p class="mt-3 break-words text-3xl font-bold text-brand-700">{{ fmtMoney(data.ot.amount) }}</p>
             <p class="mt-1 text-sm text-slate-500">อนุมัติแล้ว {{ fmtNumber(data.ot.hours) }} ชั่วโมง · รออนุมัติ {{ fmtNumber(data.ot.pending) }} รายการ</p>

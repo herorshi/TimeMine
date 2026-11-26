@@ -4,6 +4,9 @@ import { dayjs, fmtDate, fmtTime, fmtMinutes, fmtNumber, apiError } from '~/util
 
 const api = useApi()
 const toast = useToast()
+const auth = useAuthStore()
+const allowedModes = computed(() => Object.fromEntries(Object.entries(CHECKIN_MODES).filter(([key]) => auth.can(`checkin.${key}`))))
+const canCheckIn = computed(() => Object.keys(allowedModes.value).length > 0)
 
 const now = ref(new Date())
 useIntervalFn(() => {
@@ -119,15 +122,18 @@ async function checkOut() {
 
       <div v-if="!today" class="card">
         <h2 class="mb-3 font-semibold">ลงเวลาเข้างาน</h2>
+        <p v-if="!canCheckIn" class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">คุณไม่ได้รับสิทธิ์ลงเวลา กรุณาติดต่อผู้บริหาร</p>
+        <template v-else>
         <label class="label">หมายเหตุ (ไม่บังคับ)</label>
         <input v-model="note" class="input mb-4" placeholder="พิมพ์หมายเหตุ...">
         <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <button v-for="(m, key) in CHECKIN_MODES" :key="key" class="btn-secondary flex-col py-5" :disabled="!!busy" @click="pick(key)">
+          <button v-for="(m, key) in allowedModes" :key="key" class="btn-secondary flex-col py-5" :disabled="!!busy" @click="pick(key)">
             <Spinner v-if="busy === key" />
             <span v-else class="text-3xl">{{ m.icon }}</span>
             <span>{{ m.label }}</span>
           </button>
         </div>
+        </template>
       </div>
 
       <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">

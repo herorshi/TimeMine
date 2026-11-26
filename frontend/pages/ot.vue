@@ -4,6 +4,7 @@ import { fmtDate, fmtMoney, fmtNumber, todayStr, apiError, dayjs } from '~/utils
 const MONTHLY_CAP = 36 // hours
 const api = useApi()
 const toast = useToast()
+const auth = useAuthStore()
 
 const loading = ref(true)
 const rows = ref([])
@@ -76,7 +77,7 @@ async function cancel() {
 <template>
   <div>
     <PageHeader title="ขอทำ OT">
-      <button class="btn-primary" @click="openForm">+ ขอ OT</button>
+      <button v-if="auth.can('ot.request')" class="btn-primary" @click="openForm">+ ขอ OT</button>
     </PageHeader>
 
     <LoadingBlock v-if="loading" />
