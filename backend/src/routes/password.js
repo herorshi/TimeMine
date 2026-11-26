@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import { db } from '../db/index.js'
 import { httpError } from '../lib/http.js'
 import { toDateTimeStr } from '../lib/time.js'
-import { APP_URL, sendMail, usingEthereal } from '../lib/mailer.js'
+import { APP_URL, sendMail } from '../lib/mailer.js'
 
 // Public routes (no auth): forgot / reset password.
 db.exec(`
@@ -63,8 +63,8 @@ router.post('/forgot', async (req, res) => {
   const email = String(req.body?.email || '').trim().toLowerCase()
   const user = await db.prepare('SELECT id, email, name FROM users WHERE lower(email) = ? AND active = 1').get(email)
   const now = Date.now()
-  // unknown email and rate-limited requests get the same answer as success (no user enumeration)
-  if (!user) return res.json({ ok: true })
+  // owner ruling 2026-11-26: tell the user when the email is not registered (accepts the enumeration trade-off)
+  if (!user) throw httpError(404, 'ไม่พบอีเมลนี้ในระบบ')
 
   const token = crypto.randomBytes(32).toString('hex')
   const createdAt = toDateTimeStr(new Date(now))
@@ -80,11 +80,10 @@ router.post('/forgot', async (req, res) => {
   })()
   if (!created) return res.json({ ok: true })
 
-  const sending = sendMail(resetMail(user, `${APP_URL}/reset-password?token=${token}`, expiresAt))
+  // always wait for the send: on Vercel the function is frozen once the response is sent,
+  // so a send left running in the background never leaves the server
+  const { previewUrl } = await sendMail(resetMail(user, `${APP_URL}/reset-password?token=${token}`, expiresAt))
     .catch((err) => { console.error(`[mail] send failed: ${err.code || err.message}`); return {} })
-  // real SMTP: don't wait, so response time doesn't reveal whether the account exists
-  if (!usingEthereal()) return res.json({ ok: true })
-  const { previewUrl } = await sending
   res.json({ ok: true, ...(previewUrl && { preview_url: previewUrl }) })
 })
 

@@ -27,9 +27,15 @@ function pick(body = {}, fields) {
   for (const k of ['birthdate', 'start_date'])
     if (out[k] && !/^\d{4}-\d{2}-\d{2}$/.test(out[k])) throw httpError(400, 'รูปแบบวันที่ไม่ถูกต้อง')
   if (out.avatar_url && !/^https?:\/\//i.test(out.avatar_url)) throw httpError(400, 'ลิงก์รูปต้องขึ้นต้นด้วย http:// หรือ https://')
+  // owner rules 2026-11-26 (same as frontend/utils/validate.js): email = English letters, digits, special chars;
+  // phone = digits only, starts with 0, 9-10 digits (dashes/spaces from older records are stripped first)
   if ('email' in out) {
     out.email = out.email.toLowerCase()
-    if (!/^\S+@\S+$/.test(out.email)) throw httpError(400, 'รูปแบบอีเมลไม่ถูกต้อง')
+    if (!/^[a-z0-9._%+\-]+@[a-z0-9.\-]+\.[a-z]{2,}$/.test(out.email)) throw httpError(400, 'รูปแบบอีเมลไม่ถูกต้อง (ภาษาอังกฤษ ตัวเลข และอักขระพิเศษเท่านั้น)')
+  }
+  if (out.phone) {
+    out.phone = out.phone.replace(/[\s-]/g, '')
+    if (!/^0\d{8,9}$/.test(out.phone)) throw httpError(400, 'รูปแบบเบอร์โทรไม่ถูกต้อง (ตัวเลขเท่านั้น ขึ้นต้นด้วย 0, 9–10 หลัก)')
   }
   if ('gender' in out && !['M', 'F'].includes(out.gender)) throw httpError(400, 'กรุณาเลือกเพศ')
   if ('role' in out && !ROLES.includes(out.role)) throw httpError(400, 'สิทธิ์การใช้งานไม่ถูกต้อง')

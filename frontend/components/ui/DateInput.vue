@@ -76,8 +76,8 @@ const ph = computed(() => props.placeholder || ({ month: 'เลือกเด�
     auto-apply
     :action-row="{ showNow: true, nowBtnLabel: 'วันนี้', selectBtnLabel: 'เลือก', cancelBtnLabel: 'ยกเลิก' }"
   >
-    <template #year="{ year }">{{ year + 543 }}</template>
-    <template #year-overlay-value="{ value: y }">{{ y + 543 }}</template>
+    <template #year="{ value }">{{ Number.isFinite(Number(value)) ? Number(value) + 543 : value }}</template>
+    <template #year-overlay-value="{ value: y }">{{ Number.isFinite(Number(y)) ? Number(y) + 543 : y }}</template>
   </VueDatePicker>
 </template>
 

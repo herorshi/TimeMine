@@ -8,6 +8,7 @@ const toast = useToast()
 const auth = useAuthStore()
 
 const thisYear = dayjs().year()
+const today = dayjs().format('YYYY-MM-DD') // owner 2026-11-26: no leave on past dates
 const years = [thisYear + 1, thisYear, thisYear - 1, thisYear - 2]
 const year = ref(thisYear)
 const types = ref([])
@@ -145,11 +146,11 @@ const columns = [
         <div class="grid gap-4 sm:grid-cols-2">
           <div>
             <label class="label">วันเริ่มลา</label>
-            <DateInput v-model="form.start_date" required />
+            <DateInput v-model="form.start_date" :min="today" required />
           </div>
           <div>
             <label class="label">วันสิ้นสุด</label>
-            <DateInput v-model="form.end_date" :min="form.start_date" required />
+            <DateInput v-model="form.end_date" :min="form.start_date || today" required />
           </div>
         </div>
         <p class="text-sm text-slate-600">จำนวนวันทำงาน: <b>{{ days }}</b> วัน</p>

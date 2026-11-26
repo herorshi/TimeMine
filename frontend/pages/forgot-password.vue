@@ -1,5 +1,6 @@
 <script setup>
 import { apiError } from '~/utils/format'
+import { cleanEmail, isEmail, EMAIL_PATTERN, EMAIL_HINT } from '~/utils/validate'
 definePageMeta({ layout: 'blank' })
 const api = useApi()
 const toast = useToast()
@@ -7,13 +8,19 @@ const email = ref('')
 const busy = ref(false)
 const sent = ref(false)
 const previewUrl = ref('')
+const notFound = ref('')
 async function submit() {
+  notFound.value = ''
+  if (!isEmail(email.value)) { notFound.value = 'รูปแบบอีเมลไม่ถูกต้อง'; return }
   busy.value = true
   try {
     const { data } = await api.post('/password/forgot', { email: email.value })
     previewUrl.value = data.preview_url || ''
     sent.value = true
-  } catch (e) { toast.error(apiError(e)) } finally { busy.value = false }
+  } catch (e) {
+    if (e?.response?.status === 404) notFound.value = apiError(e)
+    else toast.error(apiError(e))
+  } finally { busy.value = false }
 }
 </script>
 
@@ -26,12 +33,13 @@ async function submit() {
         <p class="text-sm text-slate-500">กรอกอีเมลเพื่อรับลิงก์ตั้งรหัสผ่านใหม่</p>
       </div>
       <div v-if="sent" class="card space-y-4 text-center">
-        <p class="text-sm text-slate-700">ถ้าอีเมลนี้อยู่ในระบบ เราได้ส่งลิงก์ไปแล้ว (ลิงก์มีอายุ 30 นาที)</p>
+        <p class="text-sm text-slate-700">ส่งลิงก์ตั้งรหัสผ่านไปที่ <span class="font-medium break-all">{{ email }}</span> แล้ว<br />(ลิงก์มีอายุ 30 นาที)</p>
         <a v-if="previewUrl" :href="previewUrl" target="_blank" rel="noopener noreferrer" class="block text-xs text-slate-500 underline">เปิดอีเมลทดสอบ</a>
         <NuxtLink to="/login" class="btn-primary w-full">กลับไปหน้าเข้าสู่ระบบ</NuxtLink>
       </div>
       <form v-else class="card space-y-4" @submit.prevent="submit">
-        <div><label class="label">อีเมล</label><input v-model="email" type="email" class="input" required autocomplete="username" /></div>
+        <div><label class="label">อีเมล</label><input v-model="email" type="email" class="input" required autocomplete="username" inputmode="email" :pattern="EMAIL_PATTERN" :title="EMAIL_HINT" @input="email = cleanEmail(email); notFound = ''" />
+          <p v-if="notFound" class="mt-1 text-sm text-red-600">{{ notFound }}</p></div>
         <button class="btn-primary w-full" :disabled="busy"><Spinner v-if="busy" class="h-4 w-4" />ส่งลิงก์ตั้งรหัสผ่าน</button>
         <div class="text-center"><NuxtLink to="/login" class="text-sm font-medium text-brand-700 hover:underline">กลับไปหน้าเข้าสู่ระบบ</NuxtLink></div>
       </form>
