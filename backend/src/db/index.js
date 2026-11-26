@@ -165,3 +165,6 @@ CREATE TABLE IF NOT EXISTS role_permissions (role TEXT NOT NULL, perm TEXT NOT N
 CREATE TABLE IF NOT EXISTS user_permissions (user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, perm TEXT NOT NULL, allowed INTEGER NOT NULL, PRIMARY KEY (user_id, perm));
 `)
 addColumn('announcements', 'image_url TEXT') // announcement image (Vercel Blob URL, or a data URL in local dev)
+addColumn('users', 'face_photo_url TEXT') // enrollment evidence photo
+addColumn('users', 'face_enrolled_at TEXT')
+addColumn('attendance', 'face_photo_url TEXT') // check-in evidence photo (building mode)

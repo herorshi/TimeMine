@@ -35,3 +35,5 @@ router.post('/verify', async (req, res) => {
 })
 
 export default router
+// public face login — implemented by the face backend issue (docs/face.md)
+export const faceLoginRouter = Router()

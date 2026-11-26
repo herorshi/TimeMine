@@ -7,7 +7,7 @@ import morgan from 'morgan'
 import healthRouter from './routes/health.js'
 import authRouter from './routes/auth.js'
 import attendanceRouter from './routes/attendance.js'
-import faceRouter from './routes/face.js'
+import faceRouter, { faceLoginRouter } from './routes/face.js'
 import leavesRouter from './routes/leaves.js'
 import otRouter from './routes/ot.js'
 import holidaysRouter from './routes/holidays.js'
@@ -46,6 +46,7 @@ app.use(async (_req, _res, next) => { await db.ready(); next() }) // schema appl
 app.use('/api/health', healthRouter)
 app.use('/api/password', passwordLimiter, passwordRouter) // public: forgot / reset password
 app.use('/api', permissionGate) // per-role / per-user permissions (lib/permissions.js)
+app.use('/api/auth/face-login', faceLoginRouter) // public face login (docs/face.md)
 app.use('/api/auth', authRouter)
 app.use('/api/attendance', attendanceRouter)
 app.use('/api/face', faceRouter)
