@@ -5,9 +5,23 @@ import { httpError } from '../lib/http.js'
 import { toDateStr, toDateTimeStr, lateMinutes } from '../lib/time.js'
 import { getSettings } from '../lib/settings.js'
 import { verifyFace, isDescriptor } from '../lib/face.js'
+import { notifyAdmins } from '../lib/line.js'
 
 const MODES = ['office', 'building', 'wfh']
 const STATUSES = ['approved', 'pending', 'rejected']
+
+const MODE_LABELS = { office: '🏢 Office', building: '🏬 Building', wfh: '🏠 WFH' }
+
+function checkInMessage(user, row) {
+  return [
+    '🟢 เข้างาน',
+    `${user.name} (${user.emp_code})${user.department ? ` · ${user.department}` : ''}`,
+    `เวลา ${row.check_in_at.slice(11, 16)} น. · ${MODE_LABELS[row.mode]}`,
+    row.late_minutes > 0 && `⚠️ สาย ${row.late_minutes} นาที`,
+    row.mode === 'wfh' && 'รออนุมัติ',
+    row.mode === 'building' && row.face_verified && '✅ ยืนยันใบหน้าแล้ว',
+  ].filter(Boolean).join('\n')
+}
 
 const router = Router()
 router.use(auth)
@@ -38,7 +52,9 @@ router.post('/check-in', (req, res) => {
     req.user.id, toDateStr(now), mode, checkInAt, mode === 'wfh' ? 'pending' : 'approved',
     lateMinutes(checkInAt, getSettings()), faceVerified, faceDistance, String(note || '').trim() || null,
   )
-  res.status(201).json(byId(info.lastInsertRowid))
+  const row = byId(info.lastInsertRowid)
+  res.status(201).json(row)
+  notifyAdmins(checkInMessage(req.user, row)) // fire-and-forget: never rejects
 })
 
 router.post('/check-out', (req, res) => {
