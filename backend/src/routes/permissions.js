@@ -8,55 +8,55 @@ import { PERMISSIONS, isPermKey, keysForRole, roleDefaults, overridesFor, effect
 const router = Router()
 router.use(auth, requireRole('executive'))
 
-const roleMatrix = () => ({ admin: roleDefaults('admin'), employee: roleDefaults('employee') })
+const roleMatrix = async () => ({ admin: await roleDefaults('admin'), employee: await roleDefaults('employee') })
 
-router.get('/catalog', (_req, res) => res.json(PERMISSIONS))
-router.get('/roles', (_req, res) => res.json(roleMatrix()))
-router.put('/roles', (req, res) => {
+router.get('/catalog', async (_req, res) => res.json(PERMISSIONS))
+router.get('/roles', async (_req, res) => res.json(await roleMatrix()))
+router.put('/roles', async (req, res) => {
   const { role, perms } = req.body || {}
   if (!['admin', 'employee'].includes(role)) throw httpError(400, 'บทบาทไม่ถูกต้อง')
   if (!perms || typeof perms !== 'object') throw httpError(400, 'ข้อมูลสิทธิ์ไม่ถูกต้อง')
   const allowedKeys = role === 'employee' ? PERMISSIONS.filter((p) => p.group === 'employee').map((p) => p.key) : keysForRole('admin')
   const up = db.prepare('INSERT INTO role_permissions (role, perm, allowed) VALUES (?, ?, ?) ON CONFLICT(role, perm) DO UPDATE SET allowed = excluded.allowed')
-  db.transaction(() => {
+  await db.transaction(async () => {
     for (const [k, v] of Object.entries(perms)) {
       if (!allowedKeys.includes(k)) continue
       // employee-group keys are stored on the employee row (they apply to every role)
       const target = PERMISSIONS.find((p) => p.key === k).group === 'employee' ? 'employee' : 'admin'
-      up.run(target, k, v ? 1 : 0)
+      await up.run(target, k, v ? 1 : 0)
     }
   })()
-  res.json(roleMatrix())
+  res.json(await roleMatrix())
 })
 
-function userView(id) {
-  const u = db.prepare('SELECT id, name, emp_code, role, department FROM users WHERE id = ?').get(id)
+async function userView(id) {
+  const u = await db.prepare('SELECT id, name, emp_code, role, department FROM users WHERE id = ?').get(id)
   if (!u) throw httpError(404, 'ไม่พบผู้ใช้')
-  const eff = new Set(effectivePermissions(u))
+  const eff = new Set(await effectivePermissions(u))
   return {
     user: u,
-    role_defaults: roleDefaults(u.role),
-    overrides: overridesFor(u.id),
+    role_defaults: await roleDefaults(u.role),
+    overrides: await overridesFor(u.id),
     effective: Object.fromEntries(keysForRole(u.role).map((k) => [k, eff.has(k)])),
   }
 }
-router.get('/users/:id', (req, res) => res.json(userView(req.params.id)))
-router.put('/users/:id', (req, res) => {
-  const view = userView(req.params.id)
+router.get('/users/:id', async (req, res) => res.json(await userView(req.params.id)))
+router.put('/users/:id', async (req, res) => {
+  const view = await userView(req.params.id)
   if (view.user.role === 'executive') throw httpError(400, 'ผู้บริหารมีสิทธิ์ทุกอย่างเสมอ')
   const overrides = req.body?.overrides
   if (!overrides || typeof overrides !== 'object') throw httpError(400, 'ข้อมูลสิทธิ์ไม่ถูกต้อง')
   const keys = keysForRole(view.user.role)
   const del = db.prepare('DELETE FROM user_permissions WHERE user_id = ? AND perm = ?')
   const up = db.prepare('INSERT INTO user_permissions (user_id, perm, allowed) VALUES (?, ?, ?) ON CONFLICT(user_id, perm) DO UPDATE SET allowed = excluded.allowed')
-  db.transaction(() => {
+  await db.transaction(async () => {
     for (const [k, v] of Object.entries(overrides)) {
       if (!isPermKey(k) || !keys.includes(k)) continue
-      if (v === null || v === undefined) del.run(view.user.id, k)
-      else up.run(view.user.id, k, v ? 1 : 0)
+      if (v === null || v === undefined) await del.run(view.user.id, k)
+      else await up.run(view.user.id, k, v ? 1 : 0)
     }
   })()
-  res.json(userView(view.user.id))
+  res.json(await userView(view.user.id))
 })
 
 export default router
