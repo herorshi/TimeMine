@@ -1,5 +1,6 @@
 <script setup>
 import { apiError } from '~/utils/format'
+import { cleanEmail, isEmail, EMAIL_PATTERN, EMAIL_HINT } from '~/utils/validate'
 definePageMeta({ layout: 'blank' })
 const auth = useAuthStore()
 const toast = useToast()
@@ -34,6 +35,7 @@ async function onCaptured({ descriptor, photo }) {
   } finally { busy.value = false }
 }
 async function submit() {
+  if (!isEmail(form.email)) return toast.error('รูปแบบอีเมลไม่ถูกต้อง')
   busy.value = true
   try {
     await auth.login(form.email, form.password)
@@ -54,7 +56,7 @@ async function submit() {
         เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่
       </div>
       <form class="card space-y-4" @submit.prevent="submit">
-        <div><label class="label">อีเมล</label><input v-model="form.email" type="email" class="input" required autocomplete="username" /></div>
+        <div><label class="label">อีเมล</label><input v-model="form.email" type="email" class="input" required autocomplete="username" inputmode="email" :pattern="EMAIL_PATTERN" :title="EMAIL_HINT" @input="form.email = cleanEmail(form.email)" /></div>
         <div><label class="label">รหัสผ่าน</label><PasswordInput v-model="form.password" required autocomplete="current-password"  /></div>
         <div class="flex justify-end"><NuxtLink to="/forgot-password" class="text-sm font-medium text-brand-700 hover:underline">ลืมรหัสผ่าน?</NuxtLink></div>
         <button class="btn-primary w-full" :disabled="busy"><Spinner v-if="busy" class="h-4 w-4" />เข้าสู่ระบบ</button>

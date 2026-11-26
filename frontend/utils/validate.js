@@ -6,7 +6,8 @@ export const PHONE_PATTERN = '0[0-9]{8,9}'
 export const PHONE_HINT = 'ตัวเลขเท่านั้น ขึ้นต้นด้วย 0 (9–10 หลัก)'
 /** keep digits only (use on @input), max 10 */
 export const cleanPhone = (v) => String(v ?? '').replace(/\D/g, '').slice(0, 10)
-export const isPhone = (v) => !v || PHONE_RE.test(v)
+// older records may hold 081-234-5678: dashes/spaces are ignored here and stripped by the API
+export const isPhone = (v) => !v || PHONE_RE.test(String(v).replace(/[\s-]/g, ''))
 
 /** English letters, digits and special characters only: name@domain.tld */
 export const EMAIL_RE = /^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$/
