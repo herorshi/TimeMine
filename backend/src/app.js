@@ -1,3 +1,4 @@
+import './tz.js'
 import express from 'express'
 import { db } from './db/index.js'
 import cors from 'cors'

@@ -1,3 +1,4 @@
+import '../tz.js'
 // Seed demo data. Run: npm run seed  (wipes and refills every table)
 import 'dotenv/config'
 import bcrypt from 'bcryptjs'
