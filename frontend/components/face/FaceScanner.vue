@@ -10,6 +10,10 @@ const emit = defineEmits(['captured'])
 
 const { load, loading: modelLoading, progress } = useFaceApi()
 
+// camera must answer within 10 s, else show an error (permission prompt left open never resolves)
+const CAMERA_TIMEOUT_MS = 9000
+const CAMERA_ERROR = 'ไม่สามารถเปิดกล้องได้ กรุณาอนุญาตการใช้กล้อง หรือใช้อุปกรณ์ที่มีกล้อง'
+
 const video = ref(null)
 const canvas = ref(null)
 const preparing = ref(false)
@@ -36,7 +40,24 @@ function cameraError(e) {
   if (['NotAllowedError', 'SecurityError'].includes(e?.name)) return 'ไม่ได้รับอนุญาตให้ใช้กล้อง กรุณาอนุญาตการใช้กล้องในเบราว์เซอร์แล้วลองใหม่'
   if (['NotFoundError', 'OverconstrainedError'].includes(e?.name)) return 'ไม่พบกล้องบนอุปกรณ์นี้'
   if (['NotReadableError', 'AbortError'].includes(e?.name)) return 'เปิดกล้องไม่ได้ กล้องอาจถูกใช้งานโดยแอปอื่นอยู่'
-  return 'เปิดกล้องไม่สำเร็จ กรุณาลองใหม่'
+  return CAMERA_ERROR
+}
+
+async function openCamera(mine) {
+  const media = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 } }, audio: false })
+  // closed, retried or timed out while waiting: release the late stream
+  if (mine !== session) return media.getTracks().forEach((t) => t.stop())
+  stream = media
+  await nextTick()
+  if (mine !== session) return
+  video.value.srcObject = media
+  await video.value.play()
+}
+
+function withTimeout(promise, ms) {
+  let id
+  const timeout = new Promise((_, reject) => { id = setTimeout(() => reject(new Error('timeout')), ms) })
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(id))
 }
 
 function stop() {
@@ -56,30 +77,25 @@ async function start() {
   fatal.value = ''
   scanError.value = ''
   if (!navigator.mediaDevices?.getUserMedia) {
-    fatal.value = 'เบราว์เซอร์นี้เปิดกล้องไม่ได้ (ต้องเข้าใช้งานผ่าน HTTPS หรือ localhost)'
+    fatal.value = `${CAMERA_ERROR} (ต้องเข้าใช้งานผ่าน HTTPS หรือ localhost)`
     return
   }
   preparing.value = true
   try {
-    faceapi = await load()
-  } catch {
-    if (mine !== session) return
-    preparing.value = false
-    fatal.value = 'โหลดระบบสแกนใบหน้าไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่'
-    return
-  }
-  if (mine !== session) return
-  try {
-    const media = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 } }, audio: false })
-    if (mine !== session) return media.getTracks().forEach((t) => t.stop())
-    stream = media
-    await nextTick()
-    video.value.srcObject = media
-    await video.value.play()
+    await withTimeout(openCamera(mine), CAMERA_TIMEOUT_MS)
   } catch (e) {
     if (mine !== session) return
     stop()
     fatal.value = cameraError(e)
+    return
+  }
+  if (mine !== session) return
+  try {
+    faceapi = await load()
+  } catch {
+    if (mine !== session) return
+    stop()
+    fatal.value = 'โหลดระบบสแกนใบหน้าไม่สำเร็จ กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่'
     return
   }
   if (mine !== session) return
