@@ -44,6 +44,7 @@ router.post('/', async (req, res) => {
   if (!t) throw httpError(400, 'ประเภทการลาไม่ถูกต้อง')
   if (!isDate(start_date) || !isDate(end_date)) throw httpError(400, 'กรุณาระบุวันที่ให้ถูกต้อง')
   if (end_date < start_date) throw httpError(400, 'วันสิ้นสุดต้องไม่อยู่ก่อนวันเริ่มต้น')
+  if (start_date < toDateStr()) throw httpError(400, 'ไม่สามารถลาย้อนหลังได้ กรุณาเลือกวันนี้หรือวันถัดไป') // owner 2026-11-26
   const year = start_date.slice(0, 4)
   if (end_date.slice(0, 4) !== year) throw httpError(400, 'กรุณาแยกคำขอลาข้ามปีเป็นปีละหนึ่งคำขอ')
   if (!reason) throw httpError(400, 'กรุณาระบุเหตุผลการลา')
