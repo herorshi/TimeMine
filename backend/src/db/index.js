@@ -1,14 +1,64 @@
-import Database from 'better-sqlite3'
+// Database: libSQL (Turso in production, a local SQLite file in dev).
+// API mirrors better-sqlite3 but is async:  await db.prepare(sql).get(...args) / .all(...) / .run(...)
+//   await db.exec(multiStatementSql)        (module-level calls are queued into db.ready())
+//   await db.transaction(async () => { await db.prepare(...).run(...) })()   — statements inside run on the tx
+// Env: TURSO_DATABASE_URL + TURSO_AUTH_TOKEN (Vercel Marketplace Turso) or DB_FILE for local dev.
+import { createClient } from '@libsql/client'
+import { AsyncLocalStorage } from 'node:async_hooks'
 import fs from 'node:fs'
 import path from 'node:path'
 
-const file = process.env.DB_FILE || './data/timemint.db'
-fs.mkdirSync(path.dirname(file), { recursive: true })
+const remoteUrl = process.env.TURSO_DATABASE_URL || process.env.LIBSQL_URL
+let url = remoteUrl
+if (!url) {
+  const file = process.env.DB_FILE || './data/timemint.db'
+  fs.mkdirSync(path.dirname(file), { recursive: true })
+  url = 'file:' + file
+}
+const client = createClient({ url, authToken: process.env.TURSO_AUTH_TOKEN || process.env.LIBSQL_AUTH_TOKEN })
+const txStore = new AsyncLocalStorage()
+const exec = () => txStore.getStore() || client
 
-export const db = new Database(file)
-db.pragma('journal_mode = WAL')
-db.pragma('foreign_keys = ON')
+const toArgs = (args) => (args.length === 1 && args[0] !== null && typeof args[0] === 'object' && !Array.isArray(args[0]) ? args[0] : args.flat())
+const toObj = (rs, row) => Object.fromEntries(rs.columns.map((c, i) => [c, typeof row[i] === 'bigint' ? Number(row[i]) : row[i]]))
 
+let chain = Promise.resolve()
+const queue = (fn) => (chain = chain.then(fn))
+
+export const db = {
+  prepare(sql) {
+    return {
+      async get(...args) { const rs = await exec().execute({ sql, args: toArgs(args) }); return rs.rows[0] ? toObj(rs, rs.rows[0]) : undefined },
+      async all(...args) { const rs = await exec().execute({ sql, args: toArgs(args) }); return rs.rows.map((r) => toObj(rs, r)) },
+      async run(...args) {
+        const rs = await exec().execute({ sql, args: toArgs(args) })
+        return { changes: rs.rowsAffected, lastInsertRowid: rs.lastInsertRowid === undefined ? undefined : Number(rs.lastInsertRowid) }
+      },
+    }
+  },
+  /** multi-statement SQL; safe to call at module load (queued before db.ready() resolves) */
+  exec(sql) { return queue(() => client.executeMultiple(sql)) },
+  /** returns an async function; every db call inside fn runs on one write transaction */
+  transaction(fn) {
+    return async (...args) => {
+      if (txStore.getStore()) return fn(...args) // nested: reuse the outer tx
+      const tx = await client.transaction('write')
+      try {
+        const out = await txStore.run(tx, () => fn(...args))
+        await tx.commit()
+        return out
+      } catch (e) {
+        await tx.rollback().catch(() => {})
+        throw e
+      } finally { tx.close() }
+    }
+  },
+  /** resolves once the schema (and any module-level exec) has been applied */
+  ready() { return chain },
+  client,
+}
+
+queue(() => client.execute('PRAGMA foreign_keys = ON').catch(() => {}))
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,4 +142,7 @@ CREATE TABLE IF NOT EXISTS warnings (
   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','cancelled')),
   cancel_reason TEXT, cancelled_by INTEGER REFERENCES users(id), cancelled_at TEXT
 );
+
+CREATE TABLE IF NOT EXISTS role_permissions (role TEXT NOT NULL, perm TEXT NOT NULL, allowed INTEGER NOT NULL, PRIMARY KEY (role, perm));
+CREATE TABLE IF NOT EXISTS user_permissions (user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, perm TEXT NOT NULL, allowed INTEGER NOT NULL, PRIMARY KEY (user_id, perm));
 `)

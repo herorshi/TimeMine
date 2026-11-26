@@ -1,4 +1,5 @@
 import express from 'express'
+import { db } from './db/index.js'
 import cors from 'cors'
 import helmet from 'helmet'
 import morgan from 'morgan'
@@ -26,6 +27,7 @@ app.use(helmet())
 app.use(cors({ origin: process.env.CORS_ORIGIN?.split(',') ?? '*' }))
 app.use(express.json({ limit: '2mb' }))
 app.use(morgan('dev'))
+app.use(async (_req, _res, next) => { await db.ready(); next() }) // schema applied before any query
 
 app.use('/api/health', healthRouter)
 app.use('/api/password', passwordRouter) // public: forgot / reset password
@@ -51,3 +53,5 @@ app.use((err, _req, res, _next) => {
   console.error(err)
   res.status(500).json({ error: 'เกิดข้อผิดพลาดภายในระบบ' })
 })
+
+export default app // Vercel: Express app as the function entry

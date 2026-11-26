@@ -11,14 +11,14 @@ export const DEFAULT_SETTINGS = {
   face_threshold: '0.5',      // euclidean distance; lower = stricter
 }
 
-export function getSettings() {
-  const rows = db.prepare('SELECT key, value FROM settings').all()
+export async function getSettings() {
+  const rows = await db.prepare('SELECT key, value FROM settings').all()
   const s = { ...DEFAULT_SETTINGS }
   for (const r of rows) s[r.key] = r.value
   return s
 }
-export function setSettings(patch) {
+export async function setSettings(patch) {
   const up = db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value')
-  db.transaction(() => { for (const [k, v] of Object.entries(patch)) if (k in DEFAULT_SETTINGS) up.run(k, String(v)) })()
+  await db.transaction(async () => { for (const [k, v] of Object.entries(patch)) if (k in DEFAULT_SETTINGS) await up.run(k, String(v)) })()
   return getSettings()
 }
