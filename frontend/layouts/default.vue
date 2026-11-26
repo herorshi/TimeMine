@@ -10,30 +10,35 @@ const groups = [
   { title: 'พนักงาน', items: [
     { to: '/', label: 'หน้าหลัก', icon: '🏠' },
     { to: '/checkin', label: 'ลงเวลาเข้า-ออกงาน', icon: '⏰' },
-    { to: '/leave', label: 'ลางาน', icon: '🌴' },
-    { to: '/ot', label: 'ขอทำ OT', icon: '🌙' },
+    { to: '/leave', perm: 'leave.request', label: 'ลางาน', icon: '🌴' },
+    { to: '/ot', perm: 'ot.request', label: 'ขอทำ OT', icon: '🌙' },
     { to: '/holidays', label: 'ปฏิทินวันหยุด', icon: '📅' },
     { to: '/announcements', label: 'ประกาศ & กิจกรรม', icon: '📢' },
     { to: '/warnings', label: 'ใบเตือนของฉัน', icon: '⚠️' },
     { to: '/profile', label: 'ข้อมูลส่วนตัว', icon: '👤' },
   ] },
   { title: 'Admin', roles: ['admin'], items: [
-    { to: '/admin/attendance', label: 'การเข้างาน / อนุมัติ WFH', icon: '🗂️' },
-    { to: '/admin/leaves', label: 'อนุมัติการลา', icon: '✅' },
-    { to: '/admin/ot', label: 'อนุมัติ OT', icon: '💰' },
-    { to: '/admin/warnings', label: 'ใบเตือน', icon: '📝' },
-    { to: '/admin/announcements', label: 'จัดการประกาศ', icon: '📣' },
-    { to: '/admin/employees', label: 'จัดการพนักงาน', icon: '👥' },
-    { to: '/admin/holidays', label: 'จัดการวันหยุด', icon: '🗓️' },
-    { to: '/admin/reports', label: 'รายงาน', icon: '📊' },
-    { to: '/admin/settings', label: 'ตั้งค่าระบบ', icon: '⚙️' },
+    { to: '/admin/attendance', perm: 'approve.attendance', label: 'การเข้างาน / อนุมัติ WFH', icon: '🗂️' },
+    { to: '/admin/leaves', perm: 'approve.leaves', label: 'อนุมัติการลา', icon: '✅' },
+    { to: '/admin/ot', perm: 'approve.ot', label: 'อนุมัติ OT', icon: '💰' },
+    { to: '/admin/warnings', perm: 'warnings.manage', label: 'ใบเตือน', icon: '📝' },
+    { to: '/admin/announcements', perm: 'announcements.manage', label: 'จัดการประกาศ', icon: '📣' },
+    { to: '/admin/employees', perm: 'employees.manage', label: 'จัดการพนักงาน', icon: '👥' },
+    { to: '/admin/holidays', perm: 'holidays.manage', label: 'จัดการวันหยุด', icon: '🗓️' },
+    { to: '/admin/reports', perm: 'reports.view', label: 'รายงาน', icon: '📊' },
+    { to: '/admin/settings', perm: 'settings.manage', label: 'ตั้งค่าระบบ', icon: '⚙️' },
   ] },
   { title: 'ผู้บริหาร', roles: ['executive'], items: [
     { to: '/executive', label: 'ภาพรวม & สถิติ', icon: '📈' },
+    { to: '/executive/admins', label: 'จัดการ Admin', icon: '🛡️' },
+    { to: '/executive/permissions', label: 'สิทธิ์การใช้งาน', icon: '🔐' },
   ] },
 ]
-const visible = computed(() => groups.filter((g) => !g.roles || g.roles.includes(auth.role) || auth.isExecutive))
-const isActive = (to) => (to === '/' ? route.path === '/' : route.path.startsWith(to))
+const visible = computed(() => groups
+  .filter((g) => !g.roles || g.roles.includes(auth.role) || auth.isExecutive)
+  .map((g) => ({ ...g, items: g.items.filter((i) => !i.perm || auth.can(i.perm)) }))
+  .filter((g) => g.items.length))
+const isActive = (to) => (to === '/' || to === '/executive' ? route.path === to : route.path.startsWith(to))
 function logout() { auth.logout(); navigateTo('/login') }
 </script>
 

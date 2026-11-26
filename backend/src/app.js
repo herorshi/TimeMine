@@ -16,6 +16,9 @@ import warningsRouter from './routes/warnings.js'
 import reportsRouter from './routes/reports.js'
 import statsRouter from './routes/stats.js'
 import dashboardRouter from './routes/dashboard.js'
+import passwordRouter from './routes/password.js'
+import permissionsRouter from './routes/permissions.js'
+import { permissionGate } from './lib/permissions.js'
 
 export const app = express()
 
@@ -25,6 +28,8 @@ app.use(express.json({ limit: '2mb' }))
 app.use(morgan('dev'))
 
 app.use('/api/health', healthRouter)
+app.use('/api/password', passwordRouter) // public: forgot / reset password
+app.use('/api', permissionGate) // per-role / per-user permissions (lib/permissions.js)
 app.use('/api/auth', authRouter)
 app.use('/api/attendance', attendanceRouter)
 app.use('/api/face', faceRouter)
@@ -38,6 +43,7 @@ app.use('/api/warnings', warningsRouter)
 app.use('/api/reports', reportsRouter)
 app.use('/api/stats', statsRouter)
 app.use('/api/dashboard', dashboardRouter)
+app.use('/api/permissions', permissionsRouter)
 
 app.use((_req, res) => res.status(404).json({ error: 'not found' }))
 app.use((err, _req, res, _next) => {

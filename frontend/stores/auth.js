@@ -10,6 +10,8 @@ export const useAuthStore = defineStore('auth', {
     role: (s) => s.user?.role,
     isAdmin: (s) => ['admin', 'executive'].includes(s.user?.role),
     isExecutive: (s) => s.user?.role === 'executive',
+    /** auth.can('approve.ot') — executive always true; see backend lib/permissions.js */
+    can: (s) => (key) => s.user?.role === 'executive' || !!s.user?.permissions?.includes(key),
   },
   actions: {
     async login(email, password) {

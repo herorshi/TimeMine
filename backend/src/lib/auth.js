@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken'
 import { db } from '../db/index.js'
 import { httpError } from './http.js'
+import { effectivePermissions } from './permissions.js'
 
 const SECRET = process.env.JWT_SECRET || 'dev-only-change-me'
 export const signToken = (user) => jwt.sign({ sub: user.id, role: user.role }, SECRET, { expiresIn: '7d' })
@@ -9,7 +10,7 @@ export const signToken = (user) => jwt.sign({ sub: user.id, role: user.role }, S
 export function publicUser(u) {
   if (!u) return null
   const { password_hash, face_descriptor, ...rest } = u
-  return { ...rest, active: !!u.active, face_enrolled: !!face_descriptor }
+  return { ...rest, active: !!u.active, face_enrolled: !!face_descriptor, permissions: effectivePermissions(u) }
 }
 
 /** requires a valid Bearer token; sets req.user (full row) */
