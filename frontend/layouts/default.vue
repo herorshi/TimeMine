@@ -17,6 +17,7 @@ const groups = [
     { to: '/kpi', label: 'KPI ของฉัน', icon: '🎯' },
     { to: '/warnings', label: 'ใบเตือนของฉัน', icon: '⚠️' },
     { to: '/profile', label: 'ข้อมูลส่วนตัว', icon: '👤' },
+    { to: '/manual', label: 'คู่มือการใช้งาน', icon: '📖' },
   ] },
   { title: 'Admin', roles: ['admin'], items: [
     { to: '/admin/attendance', perm: 'approve.attendance', label: 'การเข้างาน / อนุมัติ WFH', icon: '🗂️' },
