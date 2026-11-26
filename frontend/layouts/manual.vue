@@ -29,8 +29,11 @@ const isActive = (slug) => route.path === `/manual/${slug}`
           </NuxtLink>
         </div>
       </nav>
-      <div class="border-t border-slate-100 p-4">
-        <NuxtLink to="/" class="btn-secondary w-full">← กลับเข้าระบบ</NuxtLink>
+      <!-- pinned last menu item, same spot as "คู่มือการใช้งาน" in layouts/default.vue -->
+      <div class="border-t border-slate-100 px-3 py-2">
+        <NuxtLink to="/" class="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-brand-700 transition hover:bg-brand-50">
+          <span class="w-5 text-center">↩️</span>กลับเข้าระบบ
+        </NuxtLink>
       </div>
     </aside>
     <div class="flex min-w-0 flex-1 flex-col lg:pl-64">

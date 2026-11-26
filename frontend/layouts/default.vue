@@ -17,7 +17,6 @@ const groups = [
     { to: '/kpi', label: 'KPI ของฉัน', icon: '🎯' },
     { to: '/warnings', label: 'ใบเตือนของฉัน', icon: '⚠️' },
     { to: '/profile', label: 'ข้อมูลส่วนตัว', icon: '👤' },
-    { to: '/manual', label: 'คู่มือการใช้งาน', icon: '📖' },
   ] },
   { title: 'Admin', roles: ['admin'], items: [
     { to: '/admin/attendance', perm: 'approve.attendance', label: 'การเข้างาน / อนุมัติ WFH', icon: '🗂️' },
@@ -63,6 +62,12 @@ function logout() { auth.logout(); navigateTo('/login') }
           </NuxtLink>
         </div>
       </nav>
+      <!-- pinned last menu item; layouts/manual.vue has "กลับเข้าระบบ" in the same spot -->
+      <div class="border-t border-slate-100 px-3 py-2">
+        <NuxtLink to="/manual" class="flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-slate-600 transition hover:bg-slate-50">
+          <span class="w-5 text-center">📖</span>คู่มือการใช้งาน
+        </NuxtLink>
+      </div>
       <div class="border-t border-slate-100 p-4">
         <div class="mb-3 flex items-center gap-3">
           <div class="flex h-9 w-9 items-center justify-center rounded-full bg-brand-100 font-semibold text-brand-700">{{ auth.user?.name?.[0] }}</div>
