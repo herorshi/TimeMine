@@ -35,6 +35,13 @@ async function loadYears() {
     years.value = [...new Set([thisYear + 1, year.value, ...data])].sort((a, b) => b - a)
   } catch (e) { toast.error(apiError(e)) }
 }
+const weekday = (h) => dayjs(h.date).format('dddd')
+const columns = [
+  { key: 'date', label: 'วันที่', filter: 'date', text: (h) => fmtDate(h.date), class: 'whitespace-nowrap' },
+  { key: 'weekday', label: 'วัน', filter: 'select', value: weekday, sortable: false, class: 'whitespace-nowrap' },
+  { key: 'name', label: 'ชื่อวันหยุด', class: 'min-w-[10rem]' },
+]
+
 watch(year, load)
 onMounted(() => { load(); loadYears() })
 
@@ -106,25 +113,14 @@ async function copyPrevious() {
       <button class="btn-primary" @click="openForm()">+ เพิ่มวันหยุด</button>
     </PageHeader>
 
-    <LoadingBlock v-if="loading" />
-    <div v-else-if="!holidays.length" class="card"><EmptyState icon="📅" text="ยังไม่มีวันหยุดในปีนี้" /></div>
-    <div v-else class="table-wrap">
-      <table class="table">
-        <thead><tr><th>วันที่</th><th>ชื่อวันหยุด</th><th class="!text-right">จัดการ</th></tr></thead>
-        <tbody>
-          <tr v-for="h in holidays" :key="h.id">
-            <td class="whitespace-nowrap">{{ fmtDate(h.date) }}<span class="block text-xs text-slate-400">{{ dayjs(h.date).format('dddd') }}</span></td>
-            <td class="min-w-[10rem]">{{ h.name }}</td>
-            <td>
-              <div class="flex justify-end gap-2">
-                <button class="btn-secondary btn-sm whitespace-nowrap" @click="openForm(h)">แก้ไข</button>
-                <button class="btn-danger btn-sm whitespace-nowrap" @click="target = h; deleteOpen = true">ลบ</button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <DataTable :columns="columns" :rows="holidays" :loading="loading" empty-text="ยังไม่มีวันหยุดในปีนี้">
+      <template #actions="{ row: h }">
+        <div class="flex justify-end gap-2">
+          <button class="btn-secondary btn-sm whitespace-nowrap" @click="openForm(h)">แก้ไข</button>
+          <button class="btn-danger btn-sm whitespace-nowrap" @click="target = h; deleteOpen = true">ลบ</button>
+        </div>
+      </template>
+    </DataTable>
 
     <AppModal v-model="formOpen" :title="form.id ? 'แก้ไขวันหยุด' : 'เพิ่มวันหยุด'">
       <form id="holiday-form" class="space-y-4" @submit.prevent="save">

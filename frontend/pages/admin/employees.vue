@@ -30,6 +30,22 @@ const canManage = (u) => auth.isExecutive || u.role === 'employee'
 const roleOptions = computed(() => Object.entries(ROLE_LABELS).filter(([k]) => auth.isExecutive || k === 'employee'))
 const isSelf = (u) => u?.id === auth.user?.id
 
+const genderLabel = (u) => (u.gender === 'M' ? 'ชาย' : 'หญิง')
+const activeLabels = { yes: 'ใช้งาน', no: 'ปิดใช้งาน' }
+const faceLabels = { yes: 'ลงทะเบียนแล้ว', no: 'ยังไม่ลงทะเบียน' }
+const yesNo = (v) => (v ? 'yes' : 'no')
+const toOptions = (labels) => Object.entries(labels).map(([value, label]) => ({ value, label }))
+const columns = [
+  { key: 'name', label: 'พนักงาน', value: (u) => u.name, text: (u) => `${u.name} ${u.email} ${u.emp_code} · ${genderLabel(u)}` },
+  { key: 'department', label: 'แผนก', filter: 'select' },
+  { key: 'position', label: 'ตำแหน่ง' },
+  { key: 'role', label: 'สิทธิ์', filter: 'select', text: (u) => ROLE_LABELS[u.role], class: 'whitespace-nowrap' },
+  { key: 'salary', label: 'เงินเดือน', value: (u) => Number(u.salary || 0), text: (u) => fmtMoney(u.salary), class: 'whitespace-nowrap' },
+  { key: 'active', label: 'สถานะ', filter: 'select', options: toOptions(activeLabels), value: (u) => yesNo(u.active), text: (u) => activeLabels[yesNo(u.active)] },
+  { key: 'face_enrolled', label: 'ใบหน้า', filter: 'select', options: toOptions(faceLabels), value: (u) => yesNo(u.face_enrolled), text: (u) => faceLabels[yesNo(u.face_enrolled)] },
+]
+const rowClass = (u) => (u.active ? '' : 'opacity-60')
+
 async function load() {
   try { users.value = (await api.get('/users')).data } catch (e) { toast.error(apiError(e)) } finally { loading.value = false }
 }
@@ -79,45 +95,31 @@ async function activate(u) {
 
     <input v-model="search" type="search" class="input mb-4 sm:max-w-sm" placeholder="ค้นหา รหัส ชื่อ อีเมล แผนก ตำแหน่ง" />
 
-    <LoadingBlock v-if="loading" />
-    <div v-else-if="!filtered.length" class="card"><EmptyState text="ไม่พบพนักงาน" /></div>
-    <div v-else class="table-wrap">
-      <table class="table">
-        <thead>
-          <tr><th>พนักงาน</th><th>แผนก / ตำแหน่ง</th><th>สิทธิ์</th><th>เงินเดือน</th><th>สถานะ / ใบหน้า</th><th>จัดการ</th></tr>
-        </thead>
-        <tbody>
-          <tr v-for="u in filtered" :key="u.id" :class="{ 'opacity-60': !u.active }">
-            <td>
-              <div class="w-44">
-                <p class="break-words font-medium">{{ u.name }}</p>
-                <p class="truncate text-xs text-slate-400" :title="u.email">{{ u.email }}</p>
-                <p class="text-xs text-slate-400">{{ u.emp_code }} · {{ u.gender === 'M' ? 'ชาย' : 'หญิง' }}</p>
-              </div>
-            </td>
-            <td class="min-w-[8rem]"><p>{{ u.department || '-' }}</p><p class="text-xs text-slate-400">{{ u.position || '-' }}</p></td>
-            <td class="whitespace-nowrap">{{ ROLE_LABELS[u.role] }}</td>
-            <td class="whitespace-nowrap">{{ fmtMoney(u.salary) }}</td>
-            <td>
-              <div class="flex flex-col items-start gap-1">
-                <StatusBadge :color="u.active ? 'emerald' : 'rose'" :label="u.active ? 'ใช้งาน' : 'ปิดใช้งาน'" />
-                <StatusBadge :color="u.face_enrolled ? 'emerald' : 'slate'" :label="u.face_enrolled ? 'ลงทะเบียนแล้ว' : 'ยังไม่ลงทะเบียน'" />
-              </div>
-            </td>
-            <td>
-              <div v-if="canManage(u)" class="flex w-48 flex-wrap gap-1.5">
-                <button class="btn-secondary btn-sm" @click="openForm(u)">แก้ไข</button>
-                <button class="btn-secondary btn-sm" @click="openReset(u)">รีเซ็ตรหัส</button>
-                <button v-if="u.active && !isSelf(u)" class="btn-secondary btn-sm" @click="openOff(u)">ปิดใช้งาน</button>
-                <button v-else-if="!u.active" class="btn-secondary btn-sm" @click="activate(u)">เปิดใช้งาน</button>
-                <button v-if="!isSelf(u)" class="btn-danger btn-sm" @click="openDelete(u)">ลบ</button>
-              </div>
-              <span v-else class="text-slate-400">-</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <DataTable :columns="columns" :rows="filtered" :loading="loading" :row-class="rowClass" empty-text="ไม่พบพนักงาน">
+      <template #cell-name="{ row: u }">
+        <div class="w-44">
+          <p class="break-words font-medium">{{ u.name }}</p>
+          <p class="truncate text-xs text-slate-400" :title="u.email">{{ u.email }}</p>
+          <p class="text-xs text-slate-400">{{ u.emp_code }} · {{ genderLabel(u) }}</p>
+        </div>
+      </template>
+      <template #cell-active="{ row: u }">
+        <StatusBadge :color="u.active ? 'emerald' : 'rose'" :label="activeLabels[yesNo(u.active)]" />
+      </template>
+      <template #cell-face_enrolled="{ row: u }">
+        <StatusBadge :color="u.face_enrolled ? 'emerald' : 'slate'" :label="faceLabels[yesNo(u.face_enrolled)]" />
+      </template>
+      <template #actions="{ row: u }">
+        <div v-if="canManage(u)" class="ml-auto flex w-48 flex-wrap justify-end gap-1.5">
+          <button class="btn-secondary btn-sm" @click="openForm(u)">แก้ไข</button>
+          <button class="btn-secondary btn-sm" @click="openReset(u)">รีเซ็ตรหัส</button>
+          <button v-if="u.active && !isSelf(u)" class="btn-secondary btn-sm" @click="openOff(u)">ปิดใช้งาน</button>
+          <button v-else-if="!u.active" class="btn-secondary btn-sm" @click="activate(u)">เปิดใช้งาน</button>
+          <button v-if="!isSelf(u)" class="btn-danger btn-sm" @click="openDelete(u)">ลบ</button>
+        </div>
+        <span v-else class="text-slate-400">-</span>
+      </template>
+    </DataTable>
 
     <AppModal v-model="formOpen" :title="selected ? 'แก้ไขพนักงาน' : 'เพิ่มพนักงาน'" size="lg">
       <form id="employee-form" class="grid gap-3 sm:grid-cols-2" @submit.prevent="save">
