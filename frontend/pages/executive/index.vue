@@ -104,25 +104,28 @@ const deptSets = computed(() => [{ label: 'เงินเดือนทั้�
       <div class="card">
         <h2 class="mb-3 font-semibold text-slate-800">สรุปรายเดือน</h2>
         <div class="table-wrap">
-          <table class="table whitespace-nowrap">
+          <!-- compact so all columns fit ~916px (1280 with sidebar); narrower screens scroll inside .table-wrap -->
+          <table class="table whitespace-nowrap !text-xs [&_td]:!px-1.5 [&_th]:!px-1.5">
             <thead>
               <tr>
-                <th>เดือน</th><th>วันทำงาน</th><th>เช็คอิน</th><th>มาสาย</th><th>เวลาสาย</th><th>WFH อนุมัติ / ไม่อนุมัติ</th>
-                <th>ใบเตือน ออก / ยกเลิก</th><th>ฐานเงินเดือน</th><th>OT</th><th>หัก</th><th>สุทธิ</th>
+                <th>เดือน</th><th>วัน<br>ทำงาน</th><th>เช็คอิน</th><th>มาสาย<br>/ เวลาสาย</th><th>WFH<br>อนุมัติ/ไม่</th>
+                <th>ใบเตือน<br>ออก/ยกเลิก</th><th class="text-right">ฐาน<br>เงินเดือน</th><th class="text-right">OT</th><th class="text-right">หัก</th><th class="text-right">สุทธิ</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(m, i) in stats.months" :key="m.month">
-                <td>{{ labels[i] }}</td><td>{{ m.working_days }}</td><td>{{ fmtNumber(m.checkins) }}</td><td>{{ fmtNumber(m.late_count) }}</td>
-                <td>{{ fmtMinutes(m.late_minutes) }}</td><td>{{ m.wfh_approved }} / {{ m.wfh_rejected }}</td>
-                <td>{{ m.warnings_issued }} / {{ m.warnings_cancelled }}</td><td>{{ fmtMoney(m.payroll.base) }}</td>
-                <td>{{ fmtMoney(m.payroll.ot) }}</td><td>{{ fmtMoney(m.payroll.deduction) }}</td><td class="font-medium">{{ fmtMoney(m.payroll.total) }}</td>
+                <td>{{ labels[i] }}</td><td>{{ m.working_days }}</td><td>{{ fmtNumber(m.checkins) }}</td>
+                <td>{{ fmtNumber(m.late_count) }} ครั้ง<div class="text-[11px] text-slate-400">{{ fmtMinutes(m.late_minutes) }}</div></td>
+                <td>{{ m.wfh_approved }} / {{ m.wfh_rejected }}</td>
+                <td>{{ m.warnings_issued }} / {{ m.warnings_cancelled }}</td><td class="text-right">{{ fmtMoney(m.payroll.base) }}</td>
+                <td class="text-right">{{ fmtMoney(m.payroll.ot) }}</td><td class="text-right">{{ fmtMoney(m.payroll.deduction) }}</td><td class="text-right font-medium">{{ fmtMoney(m.payroll.total) }}</td>
               </tr>
               <tr class="font-semibold">
-                <td>รวม</td><td>{{ stats.totals.working_days }}</td><td>{{ fmtNumber(stats.totals.checkins) }}</td><td>{{ fmtNumber(stats.totals.late_count) }}</td>
-                <td>{{ fmtMinutes(stats.totals.late_minutes) }}</td><td>{{ stats.totals.wfh_approved }} / {{ stats.totals.wfh_rejected }}</td>
-                <td>{{ stats.totals.warnings_issued }} / {{ stats.totals.warnings_cancelled }}</td><td>{{ fmtMoney(stats.totals.payroll.base) }}</td>
-                <td>{{ fmtMoney(stats.totals.payroll.ot) }}</td><td>{{ fmtMoney(stats.totals.payroll.deduction) }}</td><td>{{ fmtMoney(stats.totals.payroll.total) }}</td>
+                <td>รวม</td><td>{{ stats.totals.working_days }}</td><td>{{ fmtNumber(stats.totals.checkins) }}</td>
+                <td>{{ fmtNumber(stats.totals.late_count) }} ครั้ง<div class="text-[11px] font-normal text-slate-400">{{ fmtMinutes(stats.totals.late_minutes) }}</div></td>
+                <td>{{ stats.totals.wfh_approved }} / {{ stats.totals.wfh_rejected }}</td>
+                <td>{{ stats.totals.warnings_issued }} / {{ stats.totals.warnings_cancelled }}</td><td class="text-right">{{ fmtMoney(stats.totals.payroll.base) }}</td>
+                <td class="text-right">{{ fmtMoney(stats.totals.payroll.ot) }}</td><td class="text-right">{{ fmtMoney(stats.totals.payroll.deduction) }}</td><td class="text-right">{{ fmtMoney(stats.totals.payroll.total) }}</td>
               </tr>
             </tbody>
           </table>
