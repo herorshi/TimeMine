@@ -5,6 +5,7 @@ import { getSettings } from '../lib/settings.js'
 import { monthlyPay } from '../lib/payroll.js'
 import { toDateStr, workingDaysBetween } from '../lib/time.js'
 import { httpError } from '../lib/http.js'
+import { sendXlsx } from './reports.js'
 
 const router = Router()
 router.use(auth)
@@ -12,7 +13,41 @@ router.use(auth)
 const round2 = (n) => Math.round(n * 100) / 100
 const pad = (n) => String(n).padStart(2, '0')
 
-// GET /stats/overview?year=YYYY
+const MONTHS_TH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
+const INT = '#,##0'
+const DEC = '#,##0.00'
+
+function overviewSheets({ year, months, totals, departments, top_late }) {
+  const period = `ปี ${year + 543}`
+  const monthCols = [['label', 'เดือน'], ['working_days', 'วันทำงาน', INT], ['headcount', 'พนักงาน', INT], ['checkins', 'เช็คอิน', INT],
+    ['office', 'Office', INT], ['building', 'ตึก', INT], ['wfh', 'WFH', INT], ['late_count', 'มาสาย (ครั้ง)', INT],
+    ['late_minutes', 'มาสาย (นาที)', INT], ['wfh_approved', 'WFH อนุมัติ', INT], ['wfh_rejected', 'WFH ไม่อนุมัติ', INT],
+    ['warnings_issued', 'ใบเตือนที่ออก', INT], ['warnings_cancelled', 'ใบเตือนยกเลิก', INT], ['base', 'ฐานเงินเดือน', DEC],
+    ['ot', 'ค่า OT', DEC], ['deduction', 'หัก', DEC], ['total', 'สุทธิ', DEC]]
+  const deptKeys = ['headcount', 'checkins', 'late_count', 'late_minutes', 'warnings', 'payroll']
+  return [
+    {
+      name: 'สรุปรายเดือน', title: `สรุปรายเดือน ${period}`, columns: monthCols,
+      rows: months.map((m, i) => ({ ...m, ...m.payroll, label: MONTHS_TH[i] })),
+      totals: { ...totals, ...totals.payroll, label: 'รวม' },
+    },
+    {
+      name: 'แยกตามแผนก', title: `สรุปแยกตามแผนก ${period}`,
+      columns: [['department', 'แผนก'], ['headcount', 'พนักงาน', INT], ['checkins', 'เช็คอิน', INT], ['late_count', 'มาสาย (ครั้ง)', INT],
+        ['late_minutes', 'มาสาย (นาที)', INT], ['warnings', 'ใบเตือน', INT], ['payroll', 'เงินเดือนทั้งปี', DEC]],
+      rows: departments,
+      totals: { department: 'รวม', ...Object.fromEntries(deptKeys.map((k) => [k, round2(departments.reduce((s, d) => s + d[k], 0))])) },
+    },
+    {
+      name: 'มาสายสูงสุด', title: `พนักงานมาสายสูงสุด ${period}`,
+      columns: [['rank', 'อันดับ', INT], ['emp_code', 'รหัส'], ['name', 'ชื่อ'], ['department', 'แผนก'],
+        ['late_count', 'มาสาย (ครั้ง)', INT], ['late_minutes', 'มาสาย (นาที)', INT]],
+      rows: top_late.map((r, i) => ({ ...r, rank: i + 1 })),
+    },
+  ]
+}
+
+// GET /stats/overview?year=YYYY[&format=xlsx]
 router.get('/overview', requireRole('executive'), (req, res) => {
   const today = toDateStr()
   const year = Number(req.query.year ?? today.slice(0, 4))
@@ -129,7 +164,7 @@ router.get('/overview', requireRole('executive'), (req, res) => {
   const minYear = Math.max(2000, Math.min(thisYear - 2, Number(firstDate?.slice(0, 4) || thisYear)))
   const years = Array.from({ length: thisYear - minYear + 1 }, (_, i) => thisYear - i)
 
-  res.json({
+  const data = {
     year,
     years,
     headcount: users.length,
@@ -137,7 +172,9 @@ router.get('/overview', requireRole('executive'), (req, res) => {
     totals,
     departments: [...deptMap.values()].map((d) => ({ ...d, payroll: round2(d.payroll) })),
     top_late: topLate,
-  })
+  }
+  if (req.query.format === 'xlsx') return sendXlsx(res, `overview_${year}`, overviewSheets(data))
+  res.json(data)
 })
 
 export default router

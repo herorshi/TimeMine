@@ -21,7 +21,7 @@ const from = ref(dayjs().startOf('month').format('YYYY-MM-DD'))
 const to = ref(todayStr())
 const report = ref(null)
 const loading = ref(false)
-const downloading = ref(false)
+const downloading = ref('') // '' | 'csv' | 'xlsx'
 
 const valid = computed(() => (tab.value === 'payroll' ? !!month.value : !!from.value && !!to.value && from.value <= to.value))
 const params = computed(() => (tab.value === 'payroll' ? { month: month.value } : { from: from.value, to: to.value }))
@@ -58,26 +58,34 @@ const cell = (key, v) => {
   return v || '-'
 }
 
-async function download() {
-  downloading.value = true
+async function download(format) {
+  downloading.value = format
+  const name = `${tab.value}_${Object.values(params.value).join('_')}.${format}`
   try {
-    const { data } = await api.get(`/reports/${tab.value}`, { params: { ...params.value, format: 'csv' }, responseType: 'blob' })
+    const { data } = await api.get(`/reports/${tab.value}`, { params: { ...params.value, format }, responseType: 'blob' })
     const url = URL.createObjectURL(data)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${tab.value}_${Object.values(params.value).join('_')}.csv`
+    a.download = name
     a.click()
     setTimeout(() => URL.revokeObjectURL(url), 1000)
-    toast.success('ดาวน์โหลด CSV แล้ว')
-  } catch (e) { toast.error(apiError(e)) }
-  finally { downloading.value = false }
+    toast.success(`ดาวน์โหลด ${format === 'csv' ? 'CSV' : 'Excel'} แล้ว`)
+  } catch (e) { toast.error(await blobError(e)) }
+  finally { downloading.value = '' }
+}
+/** with responseType 'blob' the server's Thai error message arrives as a Blob */
+async function blobError(e) {
+  try { return JSON.parse(await e.response.data.text()).error || apiError(e) } catch { return apiError(e) }
 }
 </script>
 
 <template>
   <div>
     <PageHeader title="รายงาน" subtitle="ดูข้อมูลปัจจุบันและย้อนหลัง">
-      <button class="btn-primary" :disabled="downloading || loading || !report" @click="download"><Spinner v-if="downloading" class="h-4 w-4" />⬇ ดาวน์โหลด CSV</button>
+      <div class="flex flex-wrap gap-2">
+        <button class="btn-secondary" :disabled="!!downloading || loading || !report" @click="download('csv')"><Spinner v-if="downloading === 'csv'" class="h-4 w-4" />⬇ ดาวน์โหลด CSV</button>
+        <button class="btn-primary" :disabled="!!downloading || loading || !report" @click="download('xlsx')"><Spinner v-if="downloading === 'xlsx'" class="h-4 w-4" />📊 Export Excel</button>
+      </div>
     </PageHeader>
 
     <div class="mb-4 flex flex-wrap gap-2">
