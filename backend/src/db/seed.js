@@ -129,14 +129,21 @@ for (const u of emps) for (let i = 0; i < 8; i++) {
 await insertMany('ot_requests', 'user_id,date,start_time,end_time,hours,reason,status,amount,reviewed_by,reviewed_at,reject_reason', otRows)
 
 // Warnings
+const warnReasons = {
+  late: 'มาสายเกิน 5 ครั้งในเดือน',
+  absent: 'ขาดงานโดยไม่แจ้งล่วงหน้า',
+  performance: 'ส่งงานล่าช้ากว่ากำหนด',
+  conduct: 'ไม่ปฏิบัติตามระเบียบบริษัท',
+}
 const wRows = []
 for (let i = 0; i < 9; i++) {
   const u = pick(emps)
   const d = new Date(today); d.setDate(d.getDate() - Math.floor(rnd() * 170))
   const ds = `${toDateStr(d)} 10:00:00`
   const cancelled = rnd() < 0.2
-  wRows.push([u.id, pick(['verbal', 'written', 'written', 'final']), pick(['late', 'late', 'absent', 'conduct', 'performance']),
-    pick(['มาสายเกิน 5 ครั้งในเดือน', 'ขาดงานโดยไม่แจ้งล่วงหน้า', 'ส่งงานล่าช้ากว่ากำหนด', 'ไม่ปฏิบัติตามระเบียบบริษัท']), admin.id, ds,
+  const level = pick(['verbal', 'written', 'written', 'final'])
+  const category = pick(['late', 'late', 'absent', 'conduct', 'performance'])
+  wRows.push([u.id, level, category, warnReasons[category], admin.id, ds,
     cancelled ? 'cancelled' : 'active', cancelled ? 'ตรวจสอบแล้วมีเหตุอันสมควร' : null, cancelled ? admin.id : null, cancelled ? ds : null])
 }
 await insertMany('warnings', 'user_id,level,category,reason,issued_by,issued_at,status,cancel_reason,cancelled_by,cancelled_at', wRows)
@@ -147,7 +154,7 @@ const insA = (...row) => annRows.push(row)
 const exec = all.find((u) => u.role === 'executive')
 const future = (n) => { const d = new Date(today); d.setDate(d.getDate() + n); return toDateStr(d) }
 const past = (n) => { const d = new Date(today); d.setDate(d.getDate() - n); return `${toDateStr(d)} 09:00:00` }
-insA('งานเลี้ยงปีใหม่ 2027', 'ขอเชิญพนักงานทุกท่านร่วมงานเลี้ยงปีใหม่ ณ ห้องประชุมใหญ่ ชั้น 5 เวลา 18:00 น. เป็นต้นไป มีของรางวัลจับฉลากมากมาย', 'event', future(30), 1, exec.id, past(2))
+insA('งานเลี้ยงปีใหม่ 2570', 'ขอเชิญพนักงานทุกท่านร่วมงานเลี้ยงปีใหม่ ณ ห้องประชุมใหญ่ ชั้น 5 เวลา 18:00 น. เป็นต้นไป มีของรางวัลจับฉลากมากมาย', 'event', future(30), 1, exec.id, past(2))
 insA('อบรม Security Awareness', 'พนักงานทุกคนต้องเข้าอบรมความปลอดภัยไซเบอร์ออนไลน์ ภายในสิ้นเดือนนี้', 'event', future(10), 0, admin.id, past(5))
 insA('ปรับเวลาเข้างานช่วงปลายปี', 'ตั้งแต่ 1 ธันวาคม เวลาเข้างานยังคงเป็น 09:00 น. โปรดลงเวลาก่อนเวลาเพื่อหลีกเลี่ยงการมาสาย', 'news', null, 0, admin.id, past(8))
 insA('ผลประกอบการไตรมาส 3', 'บริษัทมีผลประกอบการเติบโต 18% ขอบคุณพนักงานทุกท่านที่ร่วมแรงร่วมใจ', 'news', null, 0, exec.id, past(20))

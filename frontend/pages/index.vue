@@ -1,6 +1,6 @@
 <script setup>
 import { CHECKIN_MODES, LEAVE_TYPES } from '~/utils/constants'
-import { dayjs, fmtDate, fmtTime, fmtMoney, fmtNumber, fmtMinutes, apiError } from '~/utils/format'
+import { dayjs, fmtDate, fmtDateLong, fmtTime, fmtMoney, fmtNumber, fmtMinutes, apiError } from '~/utils/format'
 
 const auth = useAuthStore()
 const api = useApi()
@@ -13,7 +13,7 @@ const detailOpen = ref(false)
 
 const now = useNow({ interval: 1000 })
 const clock = computed(() => dayjs(now.value).format('HH:mm:ss'))
-const dateText = computed(() => dayjs(now.value).format('วันddddที่ D MMMM YYYY'))
+const dateText = computed(() => fmtDateLong(now.value))
 const greeting = computed(() => {
   const h = now.value.getHours()
   if (h < 12) return 'สวัสดีตอนเช้า'
