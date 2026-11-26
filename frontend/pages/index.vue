@@ -5,6 +5,13 @@ import { dayjs, fmtDate, fmtDateLong, fmtTime, fmtMoney, fmtNumber, fmtMinutes, 
 const auth = useAuthStore()
 const api = useApi()
 const toast = useToast()
+const { lateLevel } = useAppSettings()
+const bannerClass = {
+  yellow: 'border-amber-200 bg-amber-50 text-amber-800',
+  red: 'border-rose-200 bg-rose-50 text-rose-700',
+  none: 'border-slate-200 bg-slate-50 text-slate-600',
+}
+const lateTone = (minutes, fallback) => ({ yellow: 'amber', red: 'rose' })[lateLevel(minutes)] || fallback
 
 const data = ref(null)
 const loading = ref(true)
@@ -83,7 +90,7 @@ onMounted(load)
     </div>
 
     <div v-else class="space-y-6">
-      <div v-if="lateToday > 0" class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+      <div v-if="lateToday > 0" class="rounded-2xl border px-4 py-3 text-sm" :class="bannerClass[lateLevel(lateToday)]">
         ⚠️ วันนี้คุณมาสาย {{ fmtMinutes(lateToday) }}
       </div>
 
@@ -107,8 +114,8 @@ onMounted(load)
       </div>
 
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="มาสายเดือนนี้" :value="`${fmtNumber(data.late.month_count)} ครั้ง`" :hint="`รวม ${fmtMinutes(data.late.month_minutes)}`" icon="⏱" :tone="data.late.month_count ? 'amber' : 'brand'" />
-        <StatCard label="มาสายสะสมทั้งหมด" :value="`${fmtNumber(data.late.count)} ครั้ง`" :hint="`รวม ${fmtMinutes(data.late.minutes)}`" icon="📊" tone="slate" />
+        <StatCard label="มาสายเดือนนี้" :value="`${fmtNumber(data.late.month_count)} ครั้ง`" :hint="`รวม ${fmtMinutes(data.late.month_minutes)}`" icon="⏱" :tone="lateTone(data.late.month_minutes, 'brand')" />
+        <StatCard label="มาสายสะสมทั้งหมด" :value="`${fmtNumber(data.late.count)} ครั้ง`" :hint="`รวม ${fmtMinutes(data.late.minutes)}`" icon="📊" :tone="lateTone(data.late.minutes, 'slate')" />
         <StatCard label="พักร้อนคงเหลือ" :value="`${fmtNumber(vacationLeft)} วัน`" hint="ปีนี้" icon="🏖️" tone="sky" />
         <NuxtLink to="/warnings" class="block min-w-0 rounded-2xl transition hover:shadow-md">
           <StatCard class="h-full" label="ใบเตือนที่มีผล" :value="`${fmtNumber(data.active_warnings)} ใบ`" hint="ดูรายละเอียด" icon="📝" :tone="data.active_warnings ? 'rose' : 'slate'" />

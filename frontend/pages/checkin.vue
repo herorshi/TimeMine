@@ -5,6 +5,13 @@ import { dayjs, fmtDate, fmtDateLong, fmtTime, fmtMinutes, fmtNumber, apiError }
 const api = useApi()
 const toast = useToast()
 const auth = useAuthStore()
+const { lateLevel } = useAppSettings()
+const bannerClass = {
+  yellow: 'border-amber-200 bg-amber-50 text-amber-800',
+  red: 'border-rose-200 bg-rose-50 text-rose-700',
+  none: 'border-slate-200 bg-slate-50 text-slate-600',
+}
+const toastType = { yellow: 'warning', red: 'error', none: 'info' }
 const allowedModes = computed(() => Object.fromEntries(Object.entries(CHECKIN_MODES).filter(([key]) => auth.can(`checkin.${key}`))))
 const canCheckIn = computed(() => Object.keys(allowedModes.value).length > 0)
 
@@ -69,7 +76,7 @@ async function checkIn(mode, descriptor) {
     today.value = data
     note.value = ''
     toast.success(mode === 'wfh' ? 'ส่งคำขอ WFH แล้ว รออนุมัติ' : 'ลงเวลาเข้างานแล้ว')
-    if (data.late_minutes > 0) toast.warning(`มาสาย ${fmtMinutes(data.late_minutes)}`)
+    if (data.late_minutes > 0) toast[toastType[lateLevel(data.late_minutes)]](`มาสาย ${fmtMinutes(data.late_minutes)}`)
     await load()
   } catch (e) {
     toast.error(apiError(e))
@@ -98,7 +105,7 @@ async function checkOut() {
     <PageHeader title="ลงเวลาเข้า-ออกงาน" />
     <LoadingBlock v-if="loading" />
     <div v-else class="space-y-5">
-      <div v-if="today?.late_minutes > 0" class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+      <div v-if="today?.late_minutes > 0" class="rounded-2xl border px-4 py-3 text-sm font-medium" :class="bannerClass[lateLevel(today.late_minutes)]">
         ⚠️ มาสาย {{ fmtMinutes(today.late_minutes) }}
       </div>
 
@@ -114,7 +121,7 @@ async function checkOut() {
             <div class="flex flex-wrap items-center gap-2 text-sm">
               <span>{{ CHECKIN_MODES[today.mode]?.icon }} {{ CHECKIN_MODES[today.mode]?.label }}</span>
               <StatusBadge :status="today.status" />
-              <StatusBadge v-if="today.late_minutes > 0" color="amber" :label="`สาย ${fmtMinutes(today.late_minutes)}`" />
+              <LateBadge v-if="today.late_minutes > 0" :minutes="today.late_minutes" />
             </div>
             <div class="mt-4 grid grid-cols-2 gap-3 text-center">
               <div class="rounded-xl bg-slate-50 p-3"><p class="text-xs text-slate-500">เข้างาน</p><p class="text-xl font-bold">{{ fmtTime(today.check_in_at) }}</p></div>
@@ -153,7 +160,7 @@ async function checkOut() {
       <div class="min-w-0">
         <h2 class="mb-3 font-semibold">ประวัติการลงเวลา</h2>
         <DataTable :columns="historyColumns" :rows="history" row-key="id" empty-text="ยังไม่มีประวัติการลงเวลา" class="whitespace-nowrap">
-          <template #cell-late_minutes="{ row }"><StatusBadge v-if="row.late_minutes > 0" color="amber" :label="`สาย ${fmtMinutes(row.late_minutes)}`" /><span v-else>-</span></template>
+          <template #cell-late_minutes="{ row }"><LateBadge :minutes="row.late_minutes" /></template>
           <template #cell-status="{ row }">
             <StatusBadge :status="row.status" />
             <p v-if="row.reject_reason" class="mt-1 w-48 whitespace-normal break-words text-xs text-rose-600">{{ row.reject_reason }}</p>
