@@ -73,3 +73,17 @@
   .modal-enter-from .modal-panel, .modal-leave-to .modal-panel, .card-hover:hover,
   .btn:active, .btn-primary:active, .btn-secondary:active, .btn-danger:active, .btn-ghost:active { transform: none; }
 }
+
+/* Native <select>: our own chevron with breathing room from the right edge (all selects, incl. DataTable filters). */
+select.input,
+select.input:focus {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  padding-right: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2364748b' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem 1rem;
+}
+select.input::-ms-expand { display: none; }
