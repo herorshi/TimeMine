@@ -14,8 +14,8 @@ const samples = [
     <ManualStep :n="1" title="ข้อความที่จะได้รับหน้าตาเป็นแบบนี้">
       <p>ข้อความมาจาก LINE Official Account ของบริษัท ส่งมาทันทีที่พนักงานกดลงเวลาเข้างานสำเร็จ ไม่ว่าจะลงแบบ Office, ที่ตึก หรือ WFH</p>
       <div class="grid gap-3 sm:grid-cols-3">
-        <figure v-for="s in samples" :key="s.title" class="rounded-xl border border-slate-200 bg-[#8cabd9] p-3">
-          <div class="rounded-2xl rounded-tl-sm bg-white px-3 py-2 text-[13px] leading-relaxed text-slate-800 shadow-sm">
+        <figure v-for="s in samples" :key="s.title" class="rounded-xl border border-slate-200 p-3" style="background:#8cabd9">
+          <div class="rounded-2xl bg-white px-3 py-2 text-sm leading-relaxed text-slate-800 shadow-sm" style="border-top-left-radius:4px">
             <p v-for="l in s.lines" :key="l">{{ l }}</p>
           </div>
           <figcaption class="mt-2 text-center text-xs font-medium text-white">{{ s.title }}</figcaption>
@@ -25,7 +25,7 @@ const samples = [
     </ManualStep>
 
     <ManualStep :n="2" title="อ่านข้อความยังไง">
-      <ul class="list-disc space-y-1 pl-5">
+      <ul class="space-y-1 pl-5" style="list-style:disc">
         <li><b>บรรทัดที่ 2</b> ชื่อพนักงาน (รหัสพนักงาน) · แผนก</li>
         <li><b>บรรทัดที่ 3</b> เวลาที่เข้างาน และแบบที่ลง: 🏢 Office, 🏬 Building (ที่ตึก), 🏠 WFH</li>
         <li><b>⚠️ สาย … นาที</b> ขึ้นเฉพาะคนที่เข้างานเกินเวลาที่ตั้งไว้ใน <ManualLink to="admin-settings" /></li>
@@ -41,7 +41,7 @@ const samples = [
 
     <ManualStep :n="4" title="อยากเริ่มรับ (หรือเลิกรับ) ข้อความ ต้องทำยังไง">
       <p>รายชื่อคนที่ได้รับข้อความ <b>ไม่ได้ตั้งในหน้าเว็บ</b> ผู้ดูแลระบบ (ฝ่าย IT) เป็นคนเพิ่มหรือลบให้ ทำตามนี้:</p>
-      <ol class="list-decimal space-y-1 pl-5">
+      <ol class="space-y-1 pl-5" style="list-style:decimal">
         <li>ขอ QR code ของ LINE Official Account บริษัทจากฝ่าย IT แล้วกด <b>เพิ่มเพื่อน</b> (ถ้าบล็อกไว้ จะไม่ได้รับข้อความ)</li>
         <li>แจ้งฝ่าย IT ว่าต้องการรับแจ้งเตือนการเข้างาน ฝ่าย IT จะหา <b>LINE User ID</b> ของคุณแล้วเพิ่มเข้าระบบให้</li>
         <li>ลองให้พนักงานสักคนลงเวลาเข้างาน ถ้าตั้งค่าถูก ข้อความจะเด้งเข้ามาภายในไม่กี่วินาที</li>
