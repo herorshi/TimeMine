@@ -28,6 +28,17 @@ const activeCounts = computed(() => {
 })
 const countOf = (id) => activeCounts.value.find((c) => c.user_id === id)?.count || 0
 
+const toOptions = (labels) => Object.entries(labels).map(([value, label]) => ({ value, label }))
+// value/text mirror what each cell shows, so the column filters and sorting match the screen
+const columns = [
+  { key: 'issued_at', label: 'วันที่ออก', filter: 'date', text: (w) => fmtDateTime(w.issued_at), class: 'whitespace-nowrap' },
+  { key: 'user_name', label: 'พนักงาน', text: (w) => `${w.user_name} ${w.emp_code}`, class: 'whitespace-nowrap' },
+  { key: 'level', label: 'ระดับ', filter: 'select', options: toOptions(WARNING_LEVELS), text: (w) => WARNING_LEVELS[w.level] || w.level, class: 'whitespace-nowrap' },
+  { key: 'category', label: 'หมวดหมู่', filter: 'select', options: toOptions(WARNING_CATEGORIES), text: (w) => WARNING_CATEGORIES[w.category] || w.category, class: 'whitespace-nowrap' },
+  { key: 'reason', label: 'เหตุผล', text: (w) => (w.status === 'cancelled' ? `${w.reason} ยกเลิก: ${w.cancel_reason} (${w.cancelled_by_name || '-'}, ${fmtDateTime(w.cancelled_at)})` : w.reason), class: 'min-w-[16rem] break-words' },
+  { key: 'status', label: 'สถานะ', filter: 'select', options: [{ value: 'active', label: 'มีผล' }, { value: 'cancelled', label: 'ยกเลิก' }] },
+]
+
 async function load() {
   try { all.value = (await api.get('/warnings')).data }
   catch (e) { toast.error(apiError(e)) }
@@ -115,27 +126,16 @@ async function doCancel(reason) {
       </div>
     </div>
 
-    <LoadingBlock v-if="loading" />
-    <div v-else-if="!items.length" class="card"><EmptyState text="ไม่พบใบเตือน" /></div>
-    <div v-else class="table-wrap">
-      <table class="table">
-        <thead><tr><th>วันที่ออก</th><th>พนักงาน</th><th>ระดับ</th><th>หมวดหมู่</th><th>เหตุผล</th><th>สถานะ</th><th /></tr></thead>
-        <tbody>
-          <tr v-for="w in items" :key="w.id">
-            <td class="whitespace-nowrap">{{ fmtDateTime(w.issued_at) }}</td>
-            <td class="whitespace-nowrap">{{ w.user_name }}<p class="text-xs text-slate-400">{{ w.emp_code }} · มีผล {{ countOf(w.user_id) }} ใบ</p></td>
-            <td class="whitespace-nowrap">{{ WARNING_LEVELS[w.level] || w.level }}</td>
-            <td class="whitespace-nowrap">{{ WARNING_CATEGORIES[w.category] || w.category }}</td>
-            <td class="min-w-[16rem] break-words">
-              <p class="whitespace-pre-wrap">{{ w.reason }}</p>
-              <p v-if="w.status === 'cancelled'" class="mt-1 text-xs text-slate-400">ยกเลิก: {{ w.cancel_reason }} ({{ w.cancelled_by_name || '-' }}, {{ fmtDateTime(w.cancelled_at) }})</p>
-            </td>
-            <td><StatusBadge :status="w.status" /></td>
-            <td><button v-if="w.status === 'active'" class="btn-secondary btn-sm whitespace-nowrap" @click="askCancel(w)">ยกเลิกใบเตือน</button></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <DataTable :columns="columns" :rows="items" row-key="id" :loading="loading" empty-text="ไม่พบใบเตือน">
+      <template #cell-issued_at="{ row }">{{ fmtDateTime(row.issued_at) }}</template>
+      <template #cell-user_name="{ row }">{{ row.user_name }}<p class="text-xs text-slate-400">{{ row.emp_code }} · มีผล {{ countOf(row.user_id) }} ใบ</p></template>
+      <template #cell-reason="{ row }">
+        <p class="whitespace-pre-wrap">{{ row.reason }}</p>
+        <p v-if="row.status === 'cancelled'" class="mt-1 text-xs text-slate-400">ยกเลิก: {{ row.cancel_reason }} ({{ row.cancelled_by_name || '-' }}, {{ fmtDateTime(row.cancelled_at) }})</p>
+      </template>
+      <template #cell-status="{ row }"><StatusBadge :status="row.status" /></template>
+      <template #actions="{ row }"><button v-if="row.status === 'active'" class="btn-secondary btn-sm whitespace-nowrap" @click="askCancel(row)">ยกเลิกใบเตือน</button></template>
+    </DataTable>
 
     <AppModal v-model="formOpen" title="ออกใบเตือน">
       <div class="space-y-3">
