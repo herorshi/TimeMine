@@ -9,6 +9,8 @@ import { toDateStr, toDateTimeStr, hhmmToMin } from '../lib/time.js'
 const router = Router()
 router.use(auth)
 
+const MAX_MINUTES = 12 * 60 // per request
+
 const isDate = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s)) && new Date(s).toISOString().startsWith(s)
 const isTime = (s) => /^([01]\d|2[0-3]):[0-5]\d$/.test(s)
 
@@ -45,6 +47,7 @@ router.post('/', (req, res) => {
   if (!isTime(start_time) || !isTime(end_time)) throw httpError(400, 'กรุณาระบุเวลาให้ถูกต้อง')
   const minutes = hhmmToMin(end_time) - hhmmToMin(start_time)
   if (minutes <= 0) throw httpError(400, 'เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม')
+  if (minutes > MAX_MINUTES) throw httpError(400, 'OT ต่อครั้งต้องไม่เกิน 12 ชั่วโมง')
   if (!reason) throw httpError(400, 'กรุณาระบุเหตุผล')
   const overlap = db.prepare(`SELECT 1 FROM ot_requests WHERE user_id = ? AND date = ? AND status != 'rejected'
     AND start_time < ? AND end_time > ?`).get(req.user.id, date, end_time, start_time)

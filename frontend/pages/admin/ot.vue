@@ -45,13 +45,15 @@ const target = ref(null)
 const approveOpen = ref(false)
 const rejectOpen = ref(false)
 const busy = ref(false)
-const ask = (row, flag) => { target.value = row; flag.value = true }
+// flags are set here, not passed from the template: templates auto-unwrap refs
+const askApprove = (row) => { target.value = row; approveOpen.value = true }
+const askReject = (row) => { target.value = row; rejectOpen.value = true }
 
 async function act(path, body, message, flag) {
   busy.value = true
   try {
-    await api.post(`/ot/${target.value.id}/${path}`, body)
-    toast.success(message)
+    const { data } = await api.post(`/ot/${target.value.id}/${path}`, body)
+    toast.success(data.status === 'approved' ? `${message} ${fmtMoney(data.amount)}` : message)
   } catch (e) {
     toast.error(apiError(e))
   } finally {
@@ -82,32 +84,34 @@ const approveMessage = computed(() => (target.value
     <template v-else>
       <p class="mb-2 text-sm text-slate-500">{{ filtered.length }} รายการ · {{ fmtNumber(totalHours) }} ชม. · {{ fmtMoney(totalAmount) }}<span v-if="!status"> (ไม่รวมที่ไม่อนุมัติ)</span></p>
       <div class="table-wrap">
-        <table class="table">
+        <table class="table [&_td]:px-2 [&_th]:px-2">
           <thead>
-            <tr><th>พนักงาน</th><th>วันที่</th><th>เวลา</th><th>ชั่วโมง</th><th>เหตุผล</th><th>ยอดเงิน</th><th>สถานะ</th><th /></tr>
+            <tr><th class="sticky left-0 z-[1]">พนักงาน</th><th>วันที่ / เวลา</th><th>ชม.</th><th>เหตุผล</th><th>ยอดเงิน</th><th>สถานะ</th><th /></tr>
           </thead>
           <tbody>
             <tr v-for="r in filtered" :key="r.id">
-              <td class="whitespace-nowrap">
+              <td class="sticky left-0 z-[1] max-w-[11rem] bg-white">
                 <p class="font-medium text-slate-800">{{ r.user_name }}</p>
                 <p class="text-xs text-slate-400">{{ r.emp_code }}<span v-if="r.department"> · {{ r.department }}</span></p>
               </td>
-              <td class="whitespace-nowrap">{{ fmtDate(r.date) }}</td>
-              <td class="whitespace-nowrap">{{ r.start_time }} - {{ r.end_time }}</td>
+              <td class="whitespace-nowrap">
+                <p>{{ fmtDate(r.date) }}</p>
+                <p class="text-xs text-slate-500">{{ r.start_time }} - {{ r.end_time }}</p>
+              </td>
               <td>{{ fmtNumber(r.hours) }}</td>
-              <td class="min-w-[12rem]">{{ r.reason }}</td>
+              <td class="min-w-[9rem] break-words">{{ r.reason }}</td>
               <td class="whitespace-nowrap">
                 <template v-if="r.status === 'rejected'">-</template>
-                <template v-else>{{ fmtMoney(r.estimated_amount) }}<span v-if="r.status === 'pending'" class="ml-1 text-xs text-slate-400">(ประมาณ)</span></template>
+                <template v-else>{{ fmtMoney(r.estimated_amount) }}<span v-if="r.status === 'pending'" class="block text-xs text-slate-400">(ประมาณ)</span></template>
               </td>
               <td>
                 <StatusBadge :status="r.status" />
-                <p v-if="r.reject_reason" class="mt-1 min-w-[10rem] text-xs text-rose-600">เหตุผล: {{ r.reject_reason }}</p>
+                <p v-if="r.reject_reason" class="mt-1 min-w-[7rem] text-xs text-rose-600">เหตุผล: {{ r.reject_reason }}</p>
               </td>
               <td>
                 <div v-if="r.status === 'pending'" class="flex gap-2">
-                  <button class="btn-primary btn-sm whitespace-nowrap" @click="ask(r, approveOpen)">อนุมัติ</button>
-                  <button class="btn-danger btn-sm whitespace-nowrap" @click="ask(r, rejectOpen)">ไม่อนุมัติ</button>
+                  <button class="btn-primary btn-sm whitespace-nowrap" @click="askApprove(r)">อนุมัติ</button>
+                  <button class="btn-danger btn-sm whitespace-nowrap" @click="askReject(r)">ไม่อนุมัติ</button>
                 </div>
               </td>
             </tr>
