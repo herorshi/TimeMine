@@ -13,6 +13,8 @@ const RULES = {
   work_start: [isTime, 'เวลาเข้างานไม่ถูกต้อง'],
   work_end: [isTime, 'เวลาเลิกงานไม่ถูกต้อง'],
   late_grace_min: [between(0, 240), 'นาทีผ่อนผันต้องอยู่ระหว่าง 0-240'],
+  late_yellow_min: [between(0, 600), 'เกณฑ์สีเหลืองต้องอยู่ระหว่าง 0-600 นาที'],
+  late_red_min: [between(0, 600), 'เกณฑ์สีแดงต้องอยู่ระหว่าง 0-600 นาที'],
   work_days_per_month: [between(1, 31), 'วันทำงานต่อเดือนต้องอยู่ระหว่าง 1-31'],
   work_hours_per_day: [between(1, 24), 'ชั่วโมงทำงานต่อวันต้องอยู่ระหว่าง 1-24'],
   ot_multiplier: [between(0, 10), 'ตัวคูณ OT ต้องอยู่ระหว่าง 0-10'],
@@ -29,6 +31,10 @@ router.put('/', requireRole('admin'), async (req, res) => {
     const [valid, message] = RULES[k]
     if (!valid(v)) throw httpError(400, message)
     patch[k] = v
+  }
+  if (patch.late_yellow_min !== undefined || patch.late_red_min !== undefined) {
+    const next = { ...(await getSettings()), ...patch }
+    if (Number(next.late_red_min) <= Number(next.late_yellow_min)) throw httpError(400, 'เกณฑ์สีแดงต้องมากกว่าเกณฑ์สีเหลือง')
   }
   res.json(await setSettings(patch))
 })

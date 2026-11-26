@@ -9,6 +9,10 @@ definePageMeta({ roles: ['executive'] })
 const api = useApi()
 const toast = useToast()
 
+const { lateLevel } = useAppSettings()
+const LATE_TEXT = { yellow: 'font-semibold text-amber-700', red: 'font-semibold text-rose-600' }
+const lateCls = (m) => LATE_TEXT[lateLevel(m)] || ''
+
 const currentYear = Number(todayStr().slice(0, 4))
 const year = ref(currentYear)
 const years = ref([currentYear])
@@ -140,7 +144,7 @@ const deptSets = computed(() => [{ label: 'เงินเดือนทั้�
       <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <StatCard icon="👥" label="พนักงานปัจจุบัน" :value="`${fmtNumber(stats.headcount)} คน`" />
         <StatCard icon="✅" tone="sky" label="อัตราการเข้างาน" :value="`${stats.totals.attendance_rate}%`" :hint="`เช็คอิน ${fmtNumber(stats.totals.checkins)} ครั้ง`" />
-        <StatCard icon="⏰" tone="amber" label="มาสายรวม" :value="`${fmtNumber(stats.totals.late_count)} ครั้ง`" :hint="fmtMinutes(stats.totals.late_minutes)" />
+        <StatCard icon="⏰" tone="amber" label="มาสายรวม" :value="`${fmtNumber(stats.totals.late_count)} ครั้ง`" :hint="fmtMinutes(stats.totals.late_minutes)" :class="lateLevel(stats.totals.late_minutes) === 'red' ? '[&_p:last-child]:!text-rose-600' : lateLevel(stats.totals.late_minutes) === 'yellow' ? '[&_p:last-child]:!text-amber-700' : ''" />
         <StatCard icon="⚠️" tone="rose" label="ใบเตือนที่ออก" :value="`${fmtNumber(stats.totals.warnings_issued)} ใบ`" :hint="`ยกเลิก ${fmtNumber(stats.totals.warnings_cancelled)} ใบ`" />
         <StatCard icon="💰" tone="violet" :label="`เงินเดือนเดือน ${labels[focusIndex]}`" :value="fmtMoney(focus.payroll.total)" :hint="`OT ${fmtMoney(focus.payroll.ot)} · หัก ${fmtMoney(focus.payroll.deduction)}`" />
         <StatCard icon="📈" tone="slate" label="เงินเดือนสะสมทั้งปี" :value="fmtMoney(stats.totals.payroll.total)" :hint="`OT ${fmtMoney(stats.totals.payroll.ot)} · หัก ${fmtMoney(stats.totals.payroll.deduction)}`" />
@@ -175,7 +179,7 @@ const deptSets = computed(() => [{ label: 'เงินเดือนทั้�
           :columns="monthColumns" :rows="monthRows" row-key="month"
         >
           <template #cell-late="{ row }">
-            {{ fmtNumber(row.late_count) }} ครั้ง<div class="text-[11px] text-slate-400">{{ fmtMinutes(row.late_minutes) }}</div>
+            {{ fmtNumber(row.late_count) }} ครั้ง<div class="text-[11px]" :class="lateCls(row.late_minutes) || 'text-slate-400'">{{ fmtMinutes(row.late_minutes) }}</div>
           </template>
           <template #cell-total="{ value }"><span class="font-medium">{{ fmtMoney(value) }}</span></template>
         </DataTable>
@@ -184,7 +188,7 @@ const deptSets = computed(() => [{ label: 'เงินเดือนทั้�
           <dl class="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3 lg:grid-cols-5">
             <div v-for="[label, value] in yearTotals" :key="label">
               <dt class="text-slate-500">{{ label }}</dt>
-              <dd class="font-semibold text-slate-800">{{ value }}</dd>
+              <dd class="font-semibold" :class="(label === 'มาสาย / เวลาสาย' && lateCls(stats.totals.late_minutes)) || 'text-slate-800'">{{ value }}</dd>
             </div>
           </dl>
         </div>
@@ -192,7 +196,9 @@ const deptSets = computed(() => [{ label: 'เงินเดือนทั้�
 
       <div class="card min-w-0">
         <h2 class="mb-3 font-semibold text-slate-800">พนักงานมาสายสูงสุด</h2>
-        <DataTable v-if="lateRows.length" :columns="lateColumns" :rows="lateRows" row-key="user_id" />
+        <DataTable v-if="lateRows.length" :columns="lateColumns" :rows="lateRows" row-key="user_id">
+          <template #cell-late_minutes="{ row }"><LateBadge :minutes="row.late_minutes" prefix="" /></template>
+        </DataTable>
         <EmptyState v-else icon="🎉" text="ไม่มีพนักงานมาสายในปีนี้" />
       </div>
     </div>
