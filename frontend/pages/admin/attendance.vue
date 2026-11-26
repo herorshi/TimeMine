@@ -60,6 +60,20 @@ const refresh = () => Promise.all([loadList(), loadSummary()])
 onMounted(async () => { await refresh(); loading.value = false })
 watch(filters, loadList)
 
+const lateText = (r) => (r.late_minutes > 0 ? `สาย ${fmtMinutes(r.late_minutes)}` : '-')
+const nowrap = 'whitespace-nowrap'
+const columns = [
+  { key: 'name', label: 'พนักงาน', text: (r) => `${r.name} ${r.emp_code}`, class: nowrap },
+  { key: 'department', label: 'แผนก', filter: 'select', value: (r) => r.department || '-', class: nowrap },
+  { key: 'date', label: 'วันที่', filter: 'date', text: (r) => fmtDate(r.date), class: nowrap },
+  { key: 'mode', label: 'รูปแบบ', filter: 'select', options: Object.entries(CHECKIN_MODES).map(([value, m]) => ({ value, label: m.label })), text: (r) => `${CHECKIN_MODES[r.mode]?.icon || ''} ${CHECKIN_MODES[r.mode]?.label || r.mode}`, class: nowrap },
+  { key: 'check_in_at', label: 'เข้า', text: (r) => fmtTime(r.check_in_at), class: nowrap },
+  { key: 'check_out_at', label: 'ออก', text: (r) => fmtTime(r.check_out_at), class: nowrap },
+  { key: 'late_minutes', label: 'มาสาย', text: lateText, class: nowrap },
+  { key: 'status', label: 'สถานะ', filter: 'select', options: ['pending', 'approved', 'rejected'].map((value) => ({ value, label: STATUS[value].label })), class: nowrap },
+  { key: 'reject_reason', label: 'เหตุผลที่ไม่อนุมัติ', text: (r) => r.reject_reason || '-', class: 'min-w-[10rem] max-w-xs break-words' },
+]
+
 async function approve(r) {
   busyId.value = r.id
   try {
@@ -141,27 +155,12 @@ async function reject(reason) {
             </select>
           </div>
         </div>
-        <LoadingBlock v-if="listLoading" />
-        <div v-else-if="!rows.length" class="card"><EmptyState text="ไม่พบรายการ" /></div>
-        <div v-else class="table-wrap">
-          <table class="table whitespace-nowrap">
-            <thead><tr><th>พนักงาน</th><th>วันที่</th><th>รูปแบบ</th><th>เข้า</th><th>ออก</th><th>มาสาย</th><th>สถานะ</th></tr></thead>
-            <tbody>
-              <tr v-for="r in rows" :key="r.id">
-                <td><p class="font-medium">{{ r.name }}</p><p class="text-xs text-slate-400">{{ r.emp_code }} · {{ r.department || '-' }}</p></td>
-                <td>{{ fmtDate(r.date) }}</td>
-                <td>{{ CHECKIN_MODES[r.mode]?.icon }} {{ CHECKIN_MODES[r.mode]?.label }}</td>
-                <td>{{ fmtTime(r.check_in_at) }}</td>
-                <td>{{ fmtTime(r.check_out_at) }}</td>
-                <td><StatusBadge v-if="r.late_minutes > 0" color="amber" :label="`สาย ${fmtMinutes(r.late_minutes)}`" /><span v-else>-</span></td>
-                <td>
-                  <StatusBadge :status="r.status" />
-                  <p v-if="r.reject_reason" class="mt-1 max-w-xs whitespace-normal break-words text-xs text-rose-600">{{ r.reject_reason }}</p>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <DataTable :columns="columns" :rows="rows" row-key="id" :loading="listLoading" empty-text="ไม่พบรายการ">
+          <template #cell-name="{ row }"><p class="font-medium">{{ row.name }}</p><p class="text-xs text-slate-400">{{ row.emp_code }}</p></template>
+          <template #cell-late_minutes="{ row }"><StatusBadge v-if="row.late_minutes > 0" color="amber" :label="lateText(row)" /><span v-else>-</span></template>
+          <template #cell-status="{ row }"><StatusBadge :status="row.status" /></template>
+          <template #cell-reject_reason="{ row }"><span v-if="row.reject_reason" class="text-xs text-rose-600">{{ row.reject_reason }}</span><span v-else>-</span></template>
+        </DataTable>
       </div>
     </div>
 
