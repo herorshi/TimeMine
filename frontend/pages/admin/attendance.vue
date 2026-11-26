@@ -1,6 +1,6 @@
 <script setup>
 import { CHECKIN_MODES, STATUS } from '~/utils/constants'
-import { fmtDate, fmtTime, todayStr, apiError } from '~/utils/format'
+import { fmtDate, fmtTime, fmtMinutes, todayStr, apiError } from '~/utils/format'
 
 definePageMeta({ roles: ['admin'] })
 
@@ -110,7 +110,7 @@ async function reject(reason) {
                 <p class="font-semibold">{{ r.name }}</p>
                 <p class="text-xs text-slate-500">{{ r.emp_code }} · {{ r.department || '-' }}</p>
               </div>
-              <StatusBadge v-if="r.late_minutes > 0" color="amber" :label="`สาย ${r.late_minutes} นาที`" />
+              <StatusBadge v-if="r.late_minutes > 0" color="amber" :label="`สาย ${fmtMinutes(r.late_minutes)}`" />
             </div>
             <p class="mt-2 text-sm text-slate-600">{{ fmtDate(r.date) }} · เข้า {{ fmtTime(r.check_in_at) }}</p>
             <p v-if="r.note" class="mt-1 break-words text-sm text-slate-500">หมายเหตุ: {{ r.note }}</p>
@@ -153,7 +153,7 @@ async function reject(reason) {
                 <td>{{ CHECKIN_MODES[r.mode]?.icon }} {{ CHECKIN_MODES[r.mode]?.label }}</td>
                 <td>{{ fmtTime(r.check_in_at) }}</td>
                 <td>{{ fmtTime(r.check_out_at) }}</td>
-                <td><StatusBadge v-if="r.late_minutes > 0" color="amber" :label="`สาย ${r.late_minutes} นาที`" /><span v-else>-</span></td>
+                <td><StatusBadge v-if="r.late_minutes > 0" color="amber" :label="`สาย ${fmtMinutes(r.late_minutes)}`" /><span v-else>-</span></td>
                 <td>
                   <StatusBadge :status="r.status" />
                   <p v-if="r.reject_reason" class="mt-1 max-w-xs whitespace-normal break-words text-xs text-rose-600">{{ r.reject_reason }}</p>

@@ -56,7 +56,7 @@ async function checkIn(mode, descriptor) {
     today.value = data
     note.value = ''
     toast.success(mode === 'wfh' ? 'ส่งคำขอ WFH แล้ว รออนุมัติ' : 'ลงเวลาเข้างานแล้ว')
-    if (data.late_minutes > 0) toast.warning(`มาสาย ${data.late_minutes} นาที`)
+    if (data.late_minutes > 0) toast.warning(`มาสาย ${fmtMinutes(data.late_minutes)}`)
     await load()
   } catch (e) {
     toast.error(apiError(e))
@@ -86,7 +86,7 @@ async function checkOut() {
     <LoadingBlock v-if="loading" />
     <div v-else class="space-y-5">
       <div v-if="today?.late_minutes > 0" class="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
-        ⚠️ มาสาย {{ today.late_minutes }} นาที
+        ⚠️ มาสาย {{ fmtMinutes(today.late_minutes) }}
       </div>
 
       <div class="grid gap-5 lg:grid-cols-2">
@@ -101,7 +101,7 @@ async function checkOut() {
             <div class="flex flex-wrap items-center gap-2 text-sm">
               <span>{{ CHECKIN_MODES[today.mode]?.icon }} {{ CHECKIN_MODES[today.mode]?.label }}</span>
               <StatusBadge :status="today.status" />
-              <StatusBadge v-if="today.late_minutes > 0" color="amber" :label="`สาย ${today.late_minutes} นาที`" />
+              <StatusBadge v-if="today.late_minutes > 0" color="amber" :label="`สาย ${fmtMinutes(today.late_minutes)}`" />
             </div>
             <div class="mt-4 grid grid-cols-2 gap-3 text-center">
               <div class="rounded-xl bg-slate-50 p-3"><p class="text-xs text-slate-500">เข้างาน</p><p class="text-xl font-bold">{{ fmtTime(today.check_in_at) }}</p></div>
@@ -146,7 +146,7 @@ async function checkOut() {
                 <td>{{ CHECKIN_MODES[r.mode]?.icon }} {{ CHECKIN_MODES[r.mode]?.label }}</td>
                 <td>{{ fmtTime(r.check_in_at) }}</td>
                 <td>{{ fmtTime(r.check_out_at) }}</td>
-                <td><StatusBadge v-if="r.late_minutes > 0" color="amber" :label="`สาย ${r.late_minutes} นาที`" /><span v-else>-</span></td>
+                <td><StatusBadge v-if="r.late_minutes > 0" color="amber" :label="`สาย ${fmtMinutes(r.late_minutes)}`" /><span v-else>-</span></td>
                 <td>
                   <StatusBadge :status="r.status" />
                   <p v-if="r.reject_reason" class="mt-1 max-w-xs whitespace-normal break-words text-xs text-rose-600">{{ r.reject_reason }}</p>
