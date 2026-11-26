@@ -89,7 +89,7 @@ const columns = [
     <div class="mb-4 flex flex-wrap items-center gap-2">
       <button v-for="t in tabs" :key="t.key" class="btn-sm" :class="status === t.key ? 'btn-primary' : 'btn-secondary'" @click="status = t.key">{{ t.label }}</button>
       <input v-model="search" class="input sm:ml-auto sm:w-64" placeholder="ค้นหาชื่อ / รหัส / แผนก">
-      <input v-model="month" type="month" class="input sm:w-44" aria-label="เดือน">
+      <div class="w-full sm:w-52" role="group" aria-label="เดือน"><DateInput v-model="month" type="month" clearable placeholder="ทุกเดือน" /></div>
     </div>
 
     <p v-if="!loading && filtered.length" class="mb-2 text-sm text-slate-500">{{ filtered.length }} รายการ · {{ fmtNumber(totalHours) }} ชม. · {{ fmtMoney(totalAmount) }}<span v-if="!status"> (ไม่รวมที่ไม่อนุมัติ)</span></p>

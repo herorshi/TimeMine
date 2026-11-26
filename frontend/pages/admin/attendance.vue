@@ -142,7 +142,7 @@ async function reject(reason) {
       <div>
         <h2 class="mb-3 font-semibold">รายการเข้างาน</h2>
         <div class="card mb-3 grid gap-3 sm:grid-cols-3">
-          <div><label class="label">วันที่ (เว้นว่าง = ทุกวัน)</label><input v-model="filters.date" type="date" class="input"></div>
+          <div><label class="label">วันที่ (เว้นว่าง = ทุกวัน)</label><DateInput v-model="filters.date" clearable placeholder="ทุกวัน" /></div>
           <div>
             <label class="label">สถานะ</label>
             <select v-model="filters.status" class="input">
