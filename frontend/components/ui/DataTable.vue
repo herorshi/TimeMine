@@ -1,6 +1,6 @@
 <script setup>
 /**
- * Shared table: per-column filters, click-to-sort, client-side pagination.
+ * Shared table: select/date column filters, sort (click a header or use the sort select in the filter row), client-side pagination.
  *
  * <DataTable :columns="cols" :rows="items" row-key="id" :loading="loading" empty-text="ยังไม่มีข้อมูล">
  *   <template #cell-status="{ row, value }"><StatusBadge :status="value" /></template>
@@ -9,10 +9,10 @@
  *
  * column: {
  *   key: 'status', label: 'สถานะ',
- *   filter: 'text' (default) | 'select' | 'date' | 'none',
+ *   filter: 'text' (default: shows a sort select, no free-text search) | 'select' | 'date' | 'none',
  *   options: [{ value, label }]        // for 'select'; default = distinct values of the column
  *   value: (row) => any                 // raw value for filter/sort (default row[key])
- *   text:  (row) => string              // text shown + used by the text filter (default String(value))
+ *   text:  (row) => string              // text shown in the cell (default String(value))
  *   sortable: true (default) | false,  align: 'left' | 'right' | 'center',  class: 'whitespace-nowrap'
  * }
  */
@@ -53,15 +53,13 @@ const selectOptions = (c) => {
 }
 
 const filtered = computed(() => {
-  const active = props.columns.filter((c) => filterType(c) !== 'none' && filters[c.key] !== undefined && filters[c.key] !== '')
+  const active = props.columns.filter((c) => ['select', 'date'].includes(filterType(c)) && filters[c.key] !== undefined && filters[c.key] !== '')
   if (!active.length) return props.rows
   return props.rows.filter((r) =>
     active.every((c) => {
-      const f = String(filters[c.key]).toLowerCase().trim()
       const t = filterType(c)
       if (t === 'select') return String(colValue(c, r)) === String(filters[c.key])
-      if (t === 'date') return String(colValue(c, r) ?? '').startsWith(filters[c.key])
-      return colText(c, r).toLowerCase().includes(f) || String(colValue(c, r) ?? '').toLowerCase().includes(f)
+      return String(colValue(c, r) ?? '').startsWith(filters[c.key])
     }),
   )
 })
@@ -92,7 +90,17 @@ function toggleSort(c) {
   else if (sortDir.value === 1) sortDir.value = -1
   else { sortKey.value = null; sortDir.value = 1 }
 }
-function clearFilters() { for (const k of Object.keys(filters)) filters[k] = '' }
+function sortValue(c) { return sortKey.value === c.key ? (sortDir.value === 1 ? 'asc' : 'desc') : '' }
+function setSort(c, v) {
+  if (!v) { if (sortKey.value === c.key) { sortKey.value = null; sortDir.value = 1 } return }
+  sortKey.value = c.key
+  sortDir.value = v === 'desc' ? -1 : 1
+}
+function clearFilters() {
+  for (const k of Object.keys(filters)) filters[k] = ''
+  sortKey.value = null
+  sortDir.value = 1
+}
 const keyOf = (r, i) => (typeof props.rowKey === 'function' ? props.rowKey(r) : r?.[props.rowKey] ?? i)
 const align = (c) => ({ right: 'text-right', center: 'text-center' })[c.align] || ''
 
@@ -128,10 +136,14 @@ const pageList = computed(() => {
                 <option v-for="o in selectOptions(c)" :key="o.value" :value="o.value">{{ o.label }}</option>
               </select>
               <DateInput v-else-if="filterType(c) === 'date'" v-model="filters[c.key]" clearable placeholder="วันที่" class="tm-date-sm" />
-              <input v-else-if="filterType(c) === 'text'" v-model="filters[c.key]" type="search" class="input !py-1 !text-xs" placeholder="ค้นหา…" :aria-label="`กรอง ${c.label}`" />
+              <select v-else-if="filterType(c) === 'text' && c.sortable !== false" :value="sortValue(c)" class="input !py-1 !text-xs" :aria-label="`เรียง ${c.label}`" @change="setSort(c, $event.target.value)">
+                <option value="">เรียง</option>
+                <option value="asc">น้อย → มาก</option>
+                <option value="desc">มาก → น้อย</option>
+              </select>
             </th>
             <th v-if="hasActions" class="!bg-white !py-1.5 text-right">
-              <button v-if="anyFilter" class="text-xs font-medium text-brand-700 hover:underline" @click="clearFilters">ล้างตัวกรอง</button>
+              <button v-if="anyFilter || sortKey" class="text-xs font-medium text-brand-700 hover:underline" @click="clearFilters">ล้างตัวกรอง</button>
             </th>
           </tr>
         </thead>
