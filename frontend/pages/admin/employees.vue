@@ -156,8 +156,8 @@ async function activate(u) {
         <div><label class="label">ตำแหน่ง</label><input v-model="form.position" class="input" /></div>
         <div><label class="label">เงินเดือน (บาท)</label><input v-model.number="form.salary" type="number" min="0" step="0.01" class="input" required /></div>
         <div><label class="label">เบอร์โทร</label><input v-model="form.phone" type="tel" class="input" /></div>
-        <div><label class="label">วันเกิด</label><input v-model="form.birthdate" type="date" class="input" /></div>
-        <div><label class="label">วันเริ่มงาน</label><input v-model="form.start_date" type="date" class="input" /></div>
+        <div><label class="label">วันเกิด</label><DateInput v-model="form.birthdate" clearable /></div>
+        <div><label class="label">วันเริ่มงาน</label><DateInput v-model="form.start_date" clearable /></div>
         <div class="sm:col-span-2"><label class="label">ที่อยู่</label><textarea v-model="form.address" rows="2" class="input" /></div>
       </form>
       <template #footer>
