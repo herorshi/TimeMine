@@ -98,6 +98,8 @@ const ph = computed(() => props.placeholder || ({ month: 'เลือกเด�
   --dp-success-color: #10b981;
 }
 .tm-date .dp__input { font-family: var(--dp-font-family); min-height: 38px; }
+/* compact variant for table filters */
+.tm-date-sm .dp__input { min-height: 30px; padding-top: 4px; padding-bottom: 4px; font-size: 0.75rem; }
 .tm-date .dp__input:focus { box-shadow: 0 0 0 3px #d1fae5; }
 .dp__menu { box-shadow: 0 12px 32px -12px rgba(15, 23, 42, 0.28); }
 .dp__today { border-color: #10b981; }

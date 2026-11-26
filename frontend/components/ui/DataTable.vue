@@ -127,7 +127,7 @@ const pageList = computed(() => {
                 <option value="">ทั้งหมด</option>
                 <option v-for="o in selectOptions(c)" :key="o.value" :value="o.value">{{ o.label }}</option>
               </select>
-              <input v-else-if="filterType(c) === 'date'" v-model="filters[c.key]" type="date" class="input !py-1 !text-xs" :aria-label="`กรอง ${c.label}`" />
+              <DateInput v-else-if="filterType(c) === 'date'" v-model="filters[c.key]" clearable placeholder="วันที่" class="tm-date-sm" />
               <input v-else-if="filterType(c) === 'text'" v-model="filters[c.key]" type="search" class="input !py-1 !text-xs" placeholder="ค้นหา…" :aria-label="`กรอง ${c.label}`" />
             </th>
             <th v-if="hasActions" class="!bg-white !py-1.5 text-right">
