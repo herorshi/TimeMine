@@ -26,6 +26,9 @@ const search = ref('')
 
 const keysOf = (group) => catalog.value.filter((p) => p.group === group)
 
+// stable arrays: DataTable goes back to page 1 whenever `rows` changes identity
+const groupRows = computed(() => Object.fromEntries(GROUPS.map((g) => [g.key, keysOf(g.key)])))
+
 // --- tab: by role ---
 const saved = ref({ admin: {}, employee: {} })
 const draft = reactive({ admin: {}, employee: {} })
@@ -40,6 +43,18 @@ function setMatrix(m) {
 const rowOf = (group) => (group === 'employee' ? 'employee' : 'admin')
 const changedKeys = (group) => keysOf(group).map((p) => p.key).filter((k) => draft[rowOf(group)][k] !== saved.value[rowOf(group)][k])
 const dirtyCount = computed(() => changedKeys('employee').length + changedKeys('admin').length)
+
+const allowText = (v) => (v ? 'อนุญาต' : 'ไม่อนุญาต')
+const ALLOW_OPTIONS = [true, false].map((v) => ({ value: String(v), label: allowText(v) }))
+const roleSlot = (role) => `cell-${role}`
+const matrixColumns = Object.fromEntries(GROUPS.map((g) => [g.key, [
+  { key: 'label', label: 'สิทธิ์', class: 'min-w-[11rem]' },
+  ...g.roles.map((role) => ({
+    key: role, label: ROLE_LABELS[role], filter: 'select', options: ALLOW_OPTIONS, align: 'center', class: 'min-w-[6rem]',
+    value: (p) => !!draft[rowOf(g.key)][p.key],
+    text: (p) => allowText(draft[rowOf(g.key)][p.key]),
+  })),
+]]))
 
 function toggle(group, key) {
   draft[rowOf(group)][key] = !draft[rowOf(group)][key]
@@ -70,6 +85,15 @@ const filtered = computed(() => {
   if (!q) return list
   return list.filter((u) => [u.emp_code, u.name, u.email, u.department, u.position].some((v) => String(v || '').toLowerCase().includes(q)))
 })
+
+const userColumns = [
+  { key: 'emp_code', label: 'รหัส', class: 'whitespace-nowrap' },
+  { key: 'name', label: 'ชื่อ', class: 'min-w-[10rem]' },
+  { key: 'department', label: 'แผนก', filter: 'select', value: (u) => u.department || '-' },
+  { key: 'position', label: 'ตำแหน่ง', value: (u) => u.position || '-' },
+  { key: 'role', label: 'บทบาท', filter: 'select', text: (u) => ROLE_LABELS[u.role] },
+  { key: 'active', label: 'สถานะ', filter: 'select', value: (u) => (u.active ? 1 : 0), text: (u) => (u.active ? 'ใช้งาน' : 'ปิดการใช้งาน') },
+]
 
 const modalOpen = ref(false)
 const selected = ref(null)
@@ -154,31 +178,21 @@ onMounted(load)
       <section v-for="g in GROUPS" :key="g.key">
         <h2 class="mb-1 text-base font-semibold text-slate-800">{{ g.label }}</h2>
         <p v-if="g.key === 'employee'" class="mb-2 text-xs text-slate-500">สิทธิ์กลุ่มนี้ใช้ค่าเดียวกันทุกบทบาท เปลี่ยนช่องใดช่องหนึ่ง อีกช่องจะเปลี่ยนตาม</p>
-        <div class="table-wrap">
-          <table class="table">
-            <thead>
-              <tr>
-                <th>สิทธิ์</th>
-                <th v-for="role in g.roles" :key="role" class="w-20 !text-center sm:w-28">{{ ROLE_LABELS[role] }}</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="p in keysOf(g.key)" :key="p.key" :class="{ 'bg-amber-50': changedKeys(g.key).includes(p.key) }">
-                <td>{{ p.label }}</td>
-                <td v-for="role in g.roles" :key="role" class="text-center">
-                  <button
-                    type="button" role="switch" :aria-checked="!!draft[rowOf(g.key)][p.key]" :aria-label="`${p.label} (${ROLE_LABELS[role]})`"
-                    class="relative inline-flex h-6 w-11 items-center rounded-full align-middle transition disabled:opacity-50"
-                    :class="draft[rowOf(g.key)][p.key] ? 'bg-brand-600' : 'bg-slate-300'"
-                    :disabled="saving" @click="toggle(g.key, p.key)"
-                  >
-                    <span class="inline-block h-5 w-5 rounded-full bg-white shadow transition" :class="draft[rowOf(g.key)][p.key] ? 'translate-x-[22px]' : 'translate-x-0.5'" />
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          :columns="matrixColumns[g.key]" :rows="groupRows[g.key]" row-key="key" empty-text="ไม่มีรายการสิทธิ์"
+          :row-class="(p) => (changedKeys(g.key).includes(p.key) ? 'bg-amber-50' : '')"
+        >
+          <template v-for="role in g.roles" :key="role" #[roleSlot(role)]="{ row }">
+            <button
+              type="button" role="switch" :aria-checked="!!draft[rowOf(g.key)][row.key]" :aria-label="`${row.label} (${ROLE_LABELS[role]})`"
+              class="relative inline-flex h-6 w-11 items-center rounded-full align-middle transition disabled:opacity-50"
+              :class="draft[rowOf(g.key)][row.key] ? 'bg-brand-600' : 'bg-slate-300'"
+              :disabled="saving" @click="toggle(g.key, row.key)"
+            >
+              <span class="inline-block h-5 w-5 rounded-full bg-white shadow transition" :class="draft[rowOf(g.key)][row.key] ? 'translate-x-[22px]' : 'translate-x-0.5'" />
+            </button>
+          </template>
+        </DataTable>
       </section>
 
       <div class="flex flex-wrap items-center justify-end gap-3">
@@ -188,22 +202,13 @@ onMounted(load)
       </div>
     </div>
 
-    <div v-else class="max-w-3xl">
+    <div v-else>
       <input v-model="search" type="search" class="input mb-4 sm:max-w-sm" placeholder="ค้นหา รหัส ชื่อ อีเมล แผนก ตำแหน่ง" />
-      <div v-if="!filtered.length" class="card"><EmptyState text="ไม่พบผู้ใช้" /></div>
-      <ul v-else class="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white">
-        <li v-for="u in filtered" :key="u.id">
-          <button type="button" class="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-slate-50" :class="{ 'opacity-60': !u.active }" @click="openUser(u)">
-            <span class="min-w-0 flex-1">
-              <span class="block break-words text-sm font-medium text-slate-800">{{ u.name }}</span>
-              <span class="block break-words text-xs text-slate-500">{{ [u.emp_code, u.department, u.position].filter(Boolean).join(' · ') }}</span>
-            </span>
-            <StatusBadge v-if="!u.active" label="ปิดการใช้งาน" color="slate" />
-            <StatusBadge :label="ROLE_LABELS[u.role]" :color="u.role === 'admin' ? 'violet' : 'sky'" />
-            <span class="text-slate-400">›</span>
-          </button>
-        </li>
-      </ul>
+      <DataTable :columns="userColumns" :rows="filtered" empty-text="ไม่พบผู้ใช้" :row-class="(u) => (u.active ? '' : 'opacity-60')">
+        <template #cell-role="{ row }"><StatusBadge :label="ROLE_LABELS[row.role]" :color="row.role === 'admin' ? 'violet' : 'sky'" /></template>
+        <template #cell-active="{ row }"><StatusBadge :label="row.active ? 'ใช้งาน' : 'ปิดการใช้งาน'" :color="row.active ? 'emerald' : 'slate'" /></template>
+        <template #actions="{ row }"><button type="button" class="btn-secondary btn-sm" @click="openUser(row)">กำหนดสิทธิ์</button></template>
+      </DataTable>
     </div>
 
     <AppModal v-model="modalOpen" :title="selected ? `สิทธิ์ของ ${selected.name}` : ''" size="lg">
