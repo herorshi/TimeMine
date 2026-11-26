@@ -5,6 +5,8 @@ export const DEFAULT_SETTINGS = {
   work_start: '09:00',        // HH:mm — check-in after this (+grace) is late
   work_end: '18:00',
   late_grace_min: '5',
+  late_yellow_min: '1',      // late ≥ this many minutes → yellow
+  late_red_min: '30',        // late ≥ this many minutes → red
   work_days_per_month: '22',
   work_hours_per_day: '8',
   ot_multiplier: '1.5',
