@@ -117,15 +117,15 @@ async function blobError(e) {
     <div class="card mb-4 grid gap-3 sm:grid-cols-3">
       <div v-if="tab === 'payroll'">
         <label class="label">เดือน</label>
-        <input v-model="month" type="month" class="input">
+        <DateInput v-model="month" type="month" clearable />
       </div>
       <template v-else>
         <div>
           <label class="label">เลือกทั้งเดือน</label>
-          <input :value="rangeMonth" type="month" class="input" @change="pickMonth($event.target.value)">
+          <DateInput :model-value="rangeMonth" type="month" @update:model-value="pickMonth" />
         </div>
-        <div><label class="label">ตั้งแต่วันที่</label><input v-model="from" type="date" class="input"></div>
-        <div><label class="label">ถึงวันที่</label><input v-model="to" type="date" class="input"></div>
+        <div><label class="label">ตั้งแต่วันที่</label><DateInput v-model="from" clearable /></div>
+        <div><label class="label">ถึงวันที่</label><DateInput v-model="to" clearable /></div>
       </template>
     </div>
 
