@@ -1,6 +1,7 @@
 <script setup>
 import { LEAVE_TYPES, STATUS } from '~/utils/constants'
 import { apiError, fmtDate, fmtDateTime, dayjs } from '~/utils/format'
+definePageMeta({ perm: 'leave.request' })
 
 const api = useApi()
 const toast = useToast()

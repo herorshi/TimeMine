@@ -1,6 +1,7 @@
 <script setup>
 import { STATUS } from '~/utils/constants'
 import { fmtDate, fmtMoney, fmtNumber, todayStr, apiError, dayjs } from '~/utils/format'
+definePageMeta({ perm: 'ot.request' })
 
 const MONTHLY_CAP = 36 // hours
 const api = useApi()

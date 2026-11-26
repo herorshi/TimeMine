@@ -1,6 +1,6 @@
 <script setup>
 import { CHECKIN_MODES, STATUS } from '~/utils/constants'
-import { dayjs, fmtDate, fmtTime, fmtMinutes, fmtNumber, apiError } from '~/utils/format'
+import { dayjs, fmtDate, fmtDateLong, fmtTime, fmtMinutes, fmtNumber, apiError } from '~/utils/format'
 
 const api = useApi()
 const toast = useToast()
@@ -104,7 +104,7 @@ async function checkOut() {
 
       <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <div class="card flex min-w-0 flex-col items-center justify-center text-center">
-          <p class="text-sm text-slate-500">{{ dayjs(now).format('dddd D MMMM YYYY') }}</p>
+          <p class="text-sm text-slate-500">{{ fmtDateLong(now) }}</p>
           <p class="mt-2 text-5xl font-bold tabular-nums text-slate-800">{{ dayjs(now).format('HH:mm:ss') }}</p>
         </div>
 
