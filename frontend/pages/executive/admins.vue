@@ -19,6 +19,17 @@ const roleOptions = ['admin', 'executive']
 
 const admins = computed(() => users.value.filter((u) => roleOptions.includes(u.role)))
 const isSelf = (u) => u?.id === auth.user?.id
+const genderLabel = (u) => (u.gender === 'M' ? 'ชาย' : 'หญิง')
+
+const columns = [
+  { key: 'name', label: 'ชื่อ', text: (u) => `${u.name} ${u.email} ${u.emp_code}` },
+  { key: 'gender', label: 'เพศ', filter: 'select', text: genderLabel, class: 'whitespace-nowrap' },
+  { key: 'department', label: 'แผนก', filter: 'select', value: (u) => u.department || '-' },
+  { key: 'position', label: 'ตำแหน่ง', value: (u) => u.position || '-' },
+  { key: 'role', label: 'สิทธิ์', filter: 'select', text: (u) => ROLE_LABELS[u.role] },
+  { key: 'active', label: 'สถานะ', filter: 'select', value: (u) => (u.active ? 1 : 0), text: (u) => (u.active ? 'ใช้งาน' : 'ปิดใช้งาน') },
+  { key: 'salary', label: 'เงินเดือน', value: (u) => Number(u.salary || 0), text: (u) => fmtMoney(u.salary), class: 'whitespace-nowrap' },
+]
 
 async function load() {
   try { users.value = (await api.get('/users')).data } catch (e) { toast.error(apiError(e)) } finally { loading.value = false }
@@ -56,55 +67,23 @@ const remove = () => run(() => api.delete(`/users/${selected.value.id}/permanent
       <button class="btn-primary" @click="openForm()">+ เพิ่มบัญชี</button>
     </PageHeader>
 
-    <LoadingBlock v-if="loading" />
-    <div v-else-if="!admins.length" class="card"><EmptyState text="ไม่พบบัญชี" /></div>
-    <template v-else>
-      <!-- phone: cards -->
-      <div class="space-y-3 md:hidden">
-        <div v-for="u in admins" :key="u.id" class="card" :class="{ 'opacity-60': !u.active }">
-          <div class="flex items-start justify-between gap-2">
-            <div class="min-w-0">
-              <p class="break-words font-medium">{{ u.name }}</p>
-              <p class="break-all text-xs text-slate-400">{{ u.email }}</p>
-              <p class="text-xs text-slate-400">{{ u.emp_code }}</p>
-            </div>
-            <StatusBadge :color="u.role === 'executive' ? 'violet' : 'sky'" :label="ROLE_LABELS[u.role]" />
-          </div>
-          <p class="mt-2 text-sm text-slate-600">{{ u.department || '-' }} · {{ u.position || '-' }}</p>
-          <p class="text-sm text-slate-600">เงินเดือน {{ fmtMoney(u.salary) }}<span v-if="!u.active" class="text-rose-600"> · ปิดใช้งาน</span></p>
-          <div class="mt-3 flex gap-2">
-            <button class="btn-secondary btn-sm" @click="openForm(u)">แก้ไข</button>
-            <button v-if="!isSelf(u)" class="btn-danger btn-sm" @click="openDelete(u)">ลบ</button>
-          </div>
+    <DataTable :columns="columns" :rows="admins" :loading="loading" empty-text="ไม่พบบัญชี" :row-class="(u) => (u.active ? '' : 'opacity-60')">
+      <template #cell-name="{ row }">
+        <div class="min-w-[12rem]">
+          <p class="font-medium">{{ row.name }}</p>
+          <p class="break-all text-xs text-slate-400">{{ row.email }}</p>
+          <p class="text-xs text-slate-400">{{ row.emp_code }}</p>
         </div>
-      </div>
-
-      <div class="table-wrap hidden md:block">
-        <table class="table">
-          <thead>
-            <tr><th>ชื่อ</th><th>แผนก / ตำแหน่ง</th><th>สิทธิ์</th><th>เงินเดือน</th><th>จัดการ</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="u in admins" :key="u.id" :class="{ 'opacity-60': !u.active }">
-              <td>
-                <p class="font-medium">{{ u.name }}<span v-if="!u.active" class="text-xs text-rose-600"> (ปิดใช้งาน)</span></p>
-                <p class="break-all text-xs text-slate-400">{{ u.email }}</p>
-                <p class="text-xs text-slate-400">{{ u.emp_code }} · {{ u.gender === 'M' ? 'ชาย' : 'หญิง' }}</p>
-              </td>
-              <td><p>{{ u.department || '-' }}</p><p class="text-xs text-slate-400">{{ u.position || '-' }}</p></td>
-              <td><StatusBadge :color="u.role === 'executive' ? 'violet' : 'sky'" :label="ROLE_LABELS[u.role]" /></td>
-              <td class="whitespace-nowrap">{{ fmtMoney(u.salary) }}</td>
-              <td>
-                <div class="flex gap-2 whitespace-nowrap">
-                  <button class="btn-secondary btn-sm" @click="openForm(u)">แก้ไข</button>
-                  <button v-if="!isSelf(u)" class="btn-danger btn-sm" @click="openDelete(u)">ลบ</button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </template>
+      </template>
+      <template #cell-role="{ row }"><StatusBadge :color="row.role === 'executive' ? 'violet' : 'sky'" :label="ROLE_LABELS[row.role]" /></template>
+      <template #cell-active="{ row }"><StatusBadge :color="row.active ? 'emerald' : 'rose'" :label="row.active ? 'ใช้งาน' : 'ปิดใช้งาน'" /></template>
+      <template #actions="{ row }">
+        <div class="flex justify-end gap-2">
+          <button class="btn-secondary btn-sm" @click="openForm(row)">แก้ไข</button>
+          <button v-if="!isSelf(row)" class="btn-danger btn-sm" @click="openDelete(row)">ลบ</button>
+        </div>
+      </template>
+    </DataTable>
 
     <AppModal v-model="formOpen" :title="selected ? 'แก้ไขบัญชี' : 'เพิ่มบัญชี'" size="lg">
       <form id="admin-form" class="grid gap-3 sm:grid-cols-2" @submit.prevent="save">
