@@ -4,6 +4,11 @@ const auth = useAuthStore()
 const route = useRoute()
 const mobileOpen = ref(false)
 watch(() => route.path, () => (mobileOpen.value = false))
+// long menus scroll: bring the current page's item into view (it can sit under the pinned bottom item)
+const nav = ref(null)
+const revealActive = () => nextTick(() => nav.value?.querySelector('[aria-current="page"]')?.scrollIntoView({ block: 'nearest' }))
+onMounted(revealActive)
+watch(() => route.path, revealActive)
 
 // Sidebar menu. roles: who sees the item (executive sees everything).
 const groups = [
@@ -54,7 +59,7 @@ function logout() { auth.logout(); navigateTo('/login') }
         <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-lg text-white">⏱</div>
         <div><p class="font-bold text-slate-800">TimeMint</p><p class="text-xs text-slate-400">ระบบลงเวลาพนักงาน</p></div>
       </div>
-      <nav class="flex-1 space-y-5 overflow-y-auto px-3 pb-4">
+      <nav ref="nav" class="flex-1 space-y-5 overflow-y-auto px-3 pb-4">
         <div v-for="g in visible" :key="g.title">
           <p class="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{{ g.title }}</p>
           <NuxtLink v-for="i in g.items" :key="i.to" :to="i.to" class="flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition" :class="isActive(i.to) ? 'bg-brand-50 font-semibold text-brand-700' : 'text-slate-600 hover:bg-slate-50'">

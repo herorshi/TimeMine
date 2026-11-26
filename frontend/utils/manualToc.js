@@ -1,5 +1,5 @@
 // Table of contents for the user manual (/manual). One topic = one page: pages/manual/<slug>.vue.
-// Screenshots: public/manual/<slug>-<n>.png (n from 1). Visibility mirrors the main menu (layouts/default.vue):
+// route: null = no app page (the 'เปิดหน้านี้ในระบบ' button is hidden). Screenshots: public/manual/<slug>-<n>.png (n from 1). Visibility mirrors the main menu (layouts/default.vue):
 // group.roles = who sees the group (executive sees everything), topic.perm = permission the app page needs.
 export const MANUAL_GROUPS = [
   { key: 'employee', title: 'สำหรับพนักงาน', topics: [
@@ -16,6 +16,7 @@ export const MANUAL_GROUPS = [
   ] },
   { key: 'admin', title: 'สำหรับ Admin', roles: ['admin'], topics: [
     { slug: 'admin-attendance', title: 'การเข้างาน / อนุมัติ WFH', icon: '🗂️', route: '/admin/attendance', perm: 'approve.attendance' },
+    { slug: 'admin-line', title: 'แจ้งเตือนผ่าน LINE', icon: '💬', route: null, perm: 'approve.attendance' },
     { slug: 'admin-leaves', title: 'อนุมัติการลา', icon: '✅', route: '/admin/leaves', perm: 'approve.leaves' },
     { slug: 'admin-ot', title: 'อนุมัติ OT', icon: '💰', route: '/admin/ot', perm: 'approve.ot' },
     { slug: 'admin-warnings', title: 'ออกใบเตือน', icon: '📝', route: '/admin/warnings', perm: 'warnings.manage' },

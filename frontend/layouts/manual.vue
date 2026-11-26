@@ -6,6 +6,11 @@ const auth = useAuthStore()
 const route = useRoute()
 const mobileOpen = ref(false)
 watch(() => route.path, () => (mobileOpen.value = false))
+// long menus scroll: bring the current page's item into view (it can sit under the pinned bottom item)
+const nav = ref(null)
+const revealActive = () => nextTick(() => nav.value?.querySelector('[aria-current="page"]')?.scrollIntoView({ block: 'nearest' }))
+onMounted(revealActive)
+watch(() => route.path, revealActive)
 const groups = computed(() => visibleManual(auth))
 const isActive = (slug) => route.path === `/manual/${slug}`
 </script>
@@ -18,7 +23,7 @@ const isActive = (slug) => route.path === `/manual/${slug}`
         <div class="flex h-9 w-9 items-center justify-center rounded-xl bg-brand-600 text-lg text-white">📖</div>
         <div><p class="font-bold text-slate-800">คู่มือการใช้งาน</p><p class="text-xs text-slate-400">TimeMint</p></div>
       </NuxtLink>
-      <nav class="flex-1 space-y-5 overflow-y-auto px-3 pb-4">
+      <nav ref="nav" class="flex-1 space-y-5 overflow-y-auto px-3 pb-4">
         <NuxtLink to="/manual" class="flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition" :class="route.path === '/manual' ? 'bg-brand-50 font-semibold text-brand-700' : 'text-slate-600 hover:bg-slate-50'">
           <span class="w-5 text-center">📚</span>สารบัญทั้งหมด
         </NuxtLink>

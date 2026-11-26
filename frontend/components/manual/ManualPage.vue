@@ -20,7 +20,7 @@ useHead(() => ({ title: `${topic.value?.title || 'คู่มือ'} · คู
     <NuxtLink to="/manual" class="text-sm text-brand-700 hover:underline">📖 คู่มือการใช้งาน</NuxtLink>
     <div class="mt-2 mb-6 flex flex-wrap items-start justify-between gap-3">
       <h1 class="text-2xl font-bold text-slate-800"><span class="mr-2">{{ topic.icon }}</span>{{ topic.title }}</h1>
-      <NuxtLink v-if="topic.route !== '/login'" :to="topic.route" class="btn-secondary btn-sm">เปิดหน้านี้ในระบบ →</NuxtLink>
+      <NuxtLink v-if="topic.route && topic.route !== '/login'" :to="topic.route" class="btn-secondary btn-sm">เปิดหน้านี้ในระบบ →</NuxtLink>
     </div>
     <p v-if="intro" class="mb-6 text-[15px] leading-relaxed text-slate-600">{{ intro }}</p>
     <div class="space-y-6"><slot /></div>

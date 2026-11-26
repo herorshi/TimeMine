@@ -3,7 +3,7 @@ definePageMeta({ layout: 'manual' })
 </script>
 
 <template>
-  <ManualPage slug="checkin" intro="ใช้ลงเวลาเข้างานและออกงานทุกวัน มี 3 แบบ คือที่ Office ที่ตึก (สแกนหน้า) และ Work from Home" :related="['home','profile','admin-attendance']">
+  <ManualPage slug="checkin" intro="ใช้ลงเวลาเข้างานและออกงานทุกวัน มี 3 แบบ คือที่ Office ที่ตึก (สแกนหน้า) และ Work from Home" :related="['home','profile','admin-attendance','admin-line']">
     <ManualStep :n="1" title="เปิดหน้าลงเวลา">
       <p>กดเมนู "ลงเวลาเข้า-ออกงาน" หรือกดกล่องสีเขียวที่ <ManualLink to="home" /> หน้านี้แสดงนาฬิกา สถานะวันนี้ ปุ่มลงเวลา สถิติมาสาย และประวัติ</p>
       <ManualShot name="checkin-1" caption="หน้าลงเวลาเข้า-ออกงาน" />

@@ -3,7 +3,7 @@ definePageMeta({ layout: 'manual' })
 </script>
 
 <template>
-  <ManualPage slug="admin-attendance" intro="หน้านี้ใช้ดูว่าใครลงเวลาเข้า-ออกงานบ้าง ตรวจรูปหลักฐานและระยะห่างจากตึก และอนุมัติหรือไม่อนุมัติคำขอ Work from Home (WFH)" :related="['checkin', 'admin-faces', 'admin-settings']">
+  <ManualPage slug="admin-attendance" intro="หน้านี้ใช้ดูว่าใครลงเวลาเข้า-ออกงานบ้าง ตรวจรูปหลักฐานและระยะห่างจากตึก และอนุมัติหรือไม่อนุมัติคำขอ Work from Home (WFH)" :related="['checkin', 'admin-line', 'admin-faces', 'admin-settings']">
     <ManualStep :n="1" title="เปิดเมนู การเข้างาน / อนุมัติ WFH">
       <p>กดเมนู <b>การเข้างาน / อนุมัติ WFH</b> ด้านซ้าย ด้านบนจะเห็นกล่องตัวเลขของวันนี้ ได้แก่ ลงเวลาวันนี้ Office ที่ตึก WFH มาสาย และ WFH รออนุมัติ (ทั้งหมด)</p>
       <ManualShot name="admin-attendance-1" caption="หน้าการเข้างาน / อนุมัติ WFH" />
