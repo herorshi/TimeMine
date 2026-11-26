@@ -188,7 +188,7 @@ async function remove() {
             <label class="label" for="a-type">ประเภท</label>
             <select id="a-type" v-model="form.type" class="input"><option value="news">ข่าว</option><option value="event">กิจกรรม</option></select>
           </div>
-          <div v-if="form.type === 'event'"><label class="label" for="a-date">วันที่จัดกิจกรรม</label><input id="a-date" v-model="form.event_date" type="date" class="input" required></div>
+          <div v-if="form.type === 'event'"><label class="label">วันที่จัดกิจกรรม</label><DateInput v-model="form.event_date" required /></div>
         </div>
         <label class="flex items-center gap-2 text-sm text-slate-700"><input v-model="form.pinned" type="checkbox" class="h-4 w-4 rounded">ปักหมุดไว้ด้านบน</label>
       </form>
