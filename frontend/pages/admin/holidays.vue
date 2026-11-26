@@ -124,7 +124,7 @@ async function copyPrevious() {
 
     <AppModal v-model="formOpen" :title="form.id ? 'แก้ไขวันหยุด' : 'เพิ่มวันหยุด'">
       <form id="holiday-form" class="space-y-4" @submit.prevent="save">
-        <div><label class="label" for="h-date">วันที่</label><input id="h-date" v-model="form.date" type="date" class="input" required></div>
+        <div><label class="label">วันที่</label><DateInput v-model="form.date" required /></div>
         <div><label class="label" for="h-name">ชื่อวันหยุด</label><input id="h-name" v-model="form.name" class="input" required></div>
       </form>
       <template #footer>
