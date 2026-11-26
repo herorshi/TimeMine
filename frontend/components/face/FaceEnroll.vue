@@ -83,7 +83,7 @@ onMounted(fetchStatus)
         <button v-if="enrolled" type="button" class="btn-secondary" :disabled="saving || removing" @click="confirmOpen = true">ลบข้อมูลใบหน้า</button>
       </div>
     </template>
-    <FaceScanner v-model="scannerOpen" title="ลงทะเบียนใบหน้า" @captured="enroll" />
+    <FaceScanner v-model="scannerOpen" title="ลงทะเบียนใบหน้า" :samples="3" @captured="enroll" />
     <ConfirmModal v-model="confirmOpen" title="ลบข้อมูลใบหน้า" message="ต้องการลบข้อมูลใบหน้าที่ลงทะเบียนไว้หรือไม่" confirm-text="ลบ" danger :loading="removing" @confirm="remove" />
   </div>
 </template>

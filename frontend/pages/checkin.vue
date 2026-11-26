@@ -31,6 +31,8 @@ const late = ref({ count: 0, minutes: 0, month_count: 0, month_minutes: 0 })
 const note = ref('')
 const scanOpen = ref(false)
 const confirmOut = ref(false)
+const needEnroll = ref(false)
+const mismatch = ref('') // face mismatch message, with an immediate retry
 
 const timeText = (v) => (v ? fmtTime(v) : null)
 const historyColumns = [
@@ -61,8 +63,29 @@ async function load() {
 onMounted(load)
 
 function pick(mode) {
-  if (mode === 'building') scanOpen.value = true
+  mismatch.value = ''
+  needEnroll.value = false
+  if (mode === 'building') startScan()
   else checkIn(mode)
+}
+async function startScan() {
+  if (busy.value) return
+  busy.value = 'building'
+  mismatch.value = ''
+  try {
+    const { data } = await api.get('/face/status')
+    needEnroll.value = !data.enrolled
+    scanOpen.value = !!data.enrolled
+  } catch (e) {
+    toast.error(apiError(e))
+  } finally {
+    busy.value = ''
+  }
+}
+function onEnrollChanged(enrolled) {
+  if (!enrolled) return
+  needEnroll.value = false
+  scanOpen.value = true
 }
 function onCaptured(descriptor) {
   scanOpen.value = false
@@ -79,7 +102,9 @@ async function checkIn(mode, descriptor) {
     if (data.late_minutes > 0) toast[toastType[lateLevel(data.late_minutes)]](`มาสาย ${fmtMinutes(data.late_minutes)}`)
     await load()
   } catch (e) {
-    toast.error(apiError(e))
+    const message = apiError(e)
+    if (message.includes('ใบหน้าไม่ตรง')) mismatch.value = message
+    toast.error(message)
   } finally {
     busy.value = ''
   }
@@ -146,6 +171,14 @@ async function checkOut() {
             <span v-else class="text-3xl">{{ m.icon }}</span>
             <span>{{ m.label }}</span>
           </button>
+        </div>
+        <div v-if="mismatch" class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">
+          <span>{{ mismatch }}</span>
+          <button type="button" class="btn-primary" :disabled="!!busy" @click="startScan">สแกนอีกครั้ง</button>
+        </div>
+        <div v-if="needEnroll" class="mt-4 space-y-3">
+          <p class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">การลงเวลาแบบเข้าอาคารต้องยืนยันใบหน้า คุณยังไม่ได้ลงทะเบียนใบหน้า กรุณาลงทะเบียนด้านล่าง จากนั้นระบบจะเปิดกล้องสแกนเข้างานต่อให้ทันที</p>
+          <FaceEnroll @changed="onEnrollChanged" />
         </div>
         </template>
       </div>
