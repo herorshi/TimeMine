@@ -45,6 +45,9 @@ function show(a) { selected.value = a; open.value = true }
     <div v-else-if="!items.length" class="card"><EmptyState icon="📢" text="ยังไม่มีประกาศ" /></div>
     <div v-else class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       <button v-for="a in items" :key="a.id" type="button" class="card flex min-w-0 flex-col items-start gap-2 text-left transition hover:border-brand-500 hover:shadow-md" @click="show(a)">
+        <div v-if="a.image_url" class="aspect-video w-full shrink-0 overflow-hidden rounded-lg bg-slate-100">
+          <img :src="a.image_url" :alt="a.title" loading="lazy" decoding="async" class="h-full w-full object-cover">
+        </div>
         <div class="flex flex-wrap items-center gap-2">
           <StatusBadge :label="a.type === 'event' ? 'กิจกรรม' : 'ข่าว'" :color="a.type === 'event' ? 'violet' : 'sky'" />
           <StatusBadge v-if="a.pinned" label="📌 ปักหมุด" color="amber" />
@@ -61,6 +64,7 @@ function show(a) { selected.value = a; open.value = true }
 
     <AppModal v-model="open" :title="selected?.type === 'event' ? 'กิจกรรม' : 'ข่าว'" size="lg">
       <template v-if="selected">
+        <img v-if="selected.image_url" :key="selected.id" :src="selected.image_url" :alt="selected.title" class="mb-4 aspect-video h-auto w-full rounded-lg bg-slate-100 object-contain">
         <h2 class="break-words text-lg font-bold text-slate-800">{{ selected.title }}</h2>
         <p class="mt-1 text-xs text-slate-400">{{ fmtDateTime(selected.created_at) }}<span v-if="selected.author_name"> · โดย {{ selected.author_name }}</span></p>
         <div v-if="selected.event_date" class="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
