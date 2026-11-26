@@ -1,5 +1,6 @@
 <script setup>
-// <FaceScanner v-model="open" title="..." @captured="(descriptor) => ..." />  descriptor = number[128]
+// <FaceScanner v-model="open" title="..." @captured="({ descriptor, descriptors, photo }) => ..." />
+// descriptor = number[128] (average of descriptors), photo = JPEG data URL (<= 640px)
 import AppModal from '~/components/ui/AppModal.vue'
 import ProgressBar from '~/components/ui/ProgressBar.vue'
 import Spinner from '~/components/ui/Spinner.vue'
@@ -34,6 +35,8 @@ let timer = null
 let videoTimer = null
 let session = 0 // bumps on every start/stop so stale async work is dropped
 let steady = null // { box, since }
+let motion = null // liveness tracking: { origin, eyeOpen, eyeClosed, misses }
+const alive = ref(false) // liveness passed: head moved or eyes blinked
 let autoAfter = 0
 
 const detectorOptions = () => new faceapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.4 })
@@ -44,7 +47,8 @@ const status = computed(() => {
   if (modelState.value === 'loading') return 'กำลังโหลดระบบสแกนใบหน้า...'
   if (modelState.value === 'error') return ''
   if (scanning.value) return 'กำลังสแกน กรุณาอยู่นิ่งๆ...'
-  return hasFace.value ? 'พบใบหน้าแล้ว อยู่นิ่งๆ ระบบจะสแกนอัตโนมัติ หรือกดปุ่ม "สแกน"' : 'จัดใบหน้าให้อยู่ตรงกลางกล้อง'
+  if (!hasFace.value) return 'จัดใบหน้าให้อยู่ตรงกลางกล้อง'
+  return alive.value ? 'ยืนยันแล้ว อยู่นิ่งๆ ระบบจะสแกนอัตโนมัติ หรือกดปุ่ม "สแกน"' : 'พบใบหน้าแล้ว กรุณาขยับศีรษะเล็กน้อย หรือ กระพริบตา'
 })
 
 function cameraError(e) {
@@ -134,6 +138,7 @@ function stop() {
   scanning.value = false
   hasFace.value = false
   steady = null
+  resetLiveness()
   autoAfter = 0
   drawBox(null)
 }
@@ -175,32 +180,79 @@ function isSteady(box) {
   return Date.now() - steady.since >= STEADY_MS
 }
 
-// live face-box overlay + auto-capture
+function resetLiveness() {
+  motion = null
+  alive.value = false
+}
+
+// eye aspect ratio: drops sharply while the eye is closed
+function eyeRatio(p) {
+  const d = (a, b) => Math.hypot(p[a].x - p[b].x, p[a].y - p[b].y)
+  return (d(1, 5) + d(2, 4)) / (2 * d(0, 3))
+}
+
+// basic liveness (docs/face.md): face centre moves >= 4% of the frame width, or a blink (close, then reopen)
+function checkLiveness(found) {
+  if (!found) {
+    if (motion && ++motion.misses >= 3) resetLiveness() // face gone: start over
+    return
+  }
+  const { x, y, width, height } = found.detection.box
+  const centre = { x: x + width / 2, y: y + height / 2 }
+  const ear = (eyeRatio(found.landmarks.getLeftEye()) + eyeRatio(found.landmarks.getRightEye())) / 2
+  if (!motion) motion = { origin: centre, eyeOpen: ear, eyeClosed: false, misses: 0 }
+  motion.misses = 0
+  if (Math.hypot(centre.x - motion.origin.x, centre.y - motion.origin.y) >= video.value.videoWidth * 0.04) alive.value = true
+  if (ear < motion.eyeOpen * 0.75) motion.eyeClosed = true
+  else if (motion.eyeClosed && ear > motion.eyeOpen * 0.9) alive.value = true
+  motion.eyeOpen = Math.max(motion.eyeOpen, ear)
+}
+
+// evidence photo (not mirrored), longest side <= 640px
+function snapshot() {
+  const v = video.value
+  const scale = Math.min(1, 640 / Math.max(v.videoWidth, v.videoHeight))
+  const c = document.createElement('canvas')
+  c.width = Math.round(v.videoWidth * scale)
+  c.height = Math.round(v.videoHeight * scale)
+  c.getContext('2d').drawImage(v, 0, 0, c.width, c.height)
+  return c.toDataURL('image/jpeg', 0.8)
+}
+
+// live face-box overlay + liveness + auto-capture
 async function track(mine) {
   if (mine !== session) return
   if (ready.value && !scanning.value && video.value?.videoWidth) {
     try {
-      const found = await faceapi.detectSingleFace(video.value, detectorOptions())
+      const found = await faceapi.detectSingleFace(video.value, detectorOptions()).withFaceLandmarks()
       if (mine !== session) return
+      const box = found?.detection.box
       hasFace.value = !!found
-      drawBox(found)
-      if (!scanning.value && Date.now() >= autoAfter && isSteady(found?.box)) scan()
+      drawBox(found?.detection)
+      checkLiveness(found)
+      const still = isSteady(box)
+      if (!scanning.value && alive.value && still && Date.now() >= autoAfter) scan()
     } catch { /* skip this frame */ }
   }
   timer = setTimeout(() => track(mine), 200)
 }
 
 async function scan() {
-  if (scanning.value || !ready.value) return
+  if (scanning.value || !ready.value || !alive.value) return
   const mine = session
   scanning.value = true
   scanError.value = ''
   steady = null
   try {
     const found = []
+    let photo = ''
     for (let i = 0; i < props.samples * 3 && found.length < props.samples && mine === session; i++) {
       const result = await faceapi.detectSingleFace(video.value, detectorOptions()).withFaceLandmarks().withFaceDescriptor()
-      if (result) found.push(result.descriptor)
+      if (mine !== session) return
+      if (result) {
+        photo ||= snapshot()
+        found.push(result.descriptor)
+      }
       if (props.samples > 1) await new Promise((resolve) => setTimeout(resolve, 150))
     }
     if (mine !== session) return
@@ -211,13 +263,14 @@ async function scan() {
     const descriptor = Array.from(found[0], (_, k) => found.reduce((sum, d) => sum + d[k], 0) / found.length)
     stop() // no second capture while the modal closes
     open.value = false
-    emit('captured', descriptor)
+    emit('captured', { descriptor, descriptors: found.map((d) => Array.from(d)), photo })
   } catch {
     if (mine === session) scanError.value = 'สแกนใบหน้าไม่สำเร็จ กรุณาลองใหม่'
   } finally {
     if (mine === session) {
       scanning.value = false
       autoAfter = Date.now() + RETRY_DELAY_MS
+      if (scanError.value) resetLiveness()
     }
   }
 }
@@ -249,7 +302,7 @@ onBeforeUnmount(stop)
     <template #footer>
       <button type="button" class="btn-secondary" @click="open = false">ยกเลิก</button>
       <button v-if="fatal" type="button" class="btn-primary" @click="start">ลองใหม่</button>
-      <button v-else type="button" class="btn-primary" :disabled="!ready || scanning" @click="scan"><Spinner v-if="scanning" class="h-4 w-4" />สแกน</button>
+      <button v-else type="button" class="btn-primary" :disabled="!ready || scanning || !alive || !hasFace" @click="scan"><Spinner v-if="scanning" class="h-4 w-4" />สแกน</button>
     </template>
   </AppModal>
 </template>

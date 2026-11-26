@@ -31,7 +31,7 @@ const late = ref({ count: 0, minutes: 0, month_count: 0, month_minutes: 0 })
 const note = ref('')
 const scanOpen = ref(false)
 const confirmOut = ref(false)
-const needEnroll = ref(false)
+const faceEnrolled = ref(null) // null = unknown
 const mismatch = ref('') // face mismatch message, with an immediate retry
 
 const timeText = (v) => (v ? fmtTime(v) : null)
@@ -60,11 +60,17 @@ async function load() {
     loading.value = false
   }
 }
-onMounted(load)
+async function loadFaceStatus() {
+  const { data } = await api.get('/face/status')
+  faceEnrolled.value = !!data.enrolled
+}
+onMounted(() => {
+  load()
+  loadFaceStatus().catch(() => {}) // status hint only; startScan() re-checks and reports errors
+})
 
 function pick(mode) {
   mismatch.value = ''
-  needEnroll.value = false
   if (mode === 'building') startScan()
   else checkIn(mode)
 }
@@ -73,29 +79,32 @@ async function startScan() {
   busy.value = 'building'
   mismatch.value = ''
   try {
-    const { data } = await api.get('/face/status')
-    needEnroll.value = !data.enrolled
-    scanOpen.value = !!data.enrolled
+    await loadFaceStatus()
+    scanOpen.value = faceEnrolled.value
+    if (!faceEnrolled.value) toast.warning('กรุณาติดต่อ admin เพื่อลงทะเบียนใบหน้า')
   } catch (e) {
     toast.error(apiError(e))
   } finally {
     busy.value = ''
   }
 }
-function onEnrollChanged(enrolled) {
-  if (!enrolled) return
-  needEnroll.value = false
-  scanOpen.value = true
-}
-function onCaptured(descriptor) {
+function onCaptured({ descriptor, photo }) {
   scanOpen.value = false
-  checkIn('building', Array.from(descriptor))
+  checkIn('building', { descriptor, photo })
 }
-async function checkIn(mode, descriptor) {
+// on a face mismatch: the name of whoever the face was identified as ('' if the server does not say)
+async function recognisedName(error, face) {
+  let name = error.response.data?.user?.name
+  if (!name) {
+    try { name = (await api.post('/face/identify', face)).data?.user?.name } catch (e) { name = e?.response?.data?.user?.name }
+  }
+  return name && name !== auth.user?.name ? name : ''
+}
+async function checkIn(mode, face) {
   if (busy.value) return
   busy.value = mode
   try {
-    const { data } = await api.post('/attendance/check-in', { mode, descriptor, note: note.value })
+    const { data } = await api.post('/attendance/check-in', { mode, ...face, note: note.value })
     today.value = data
     note.value = ''
     toast.success(mode === 'wfh' ? 'ส่งคำขอ WFH แล้ว รออนุมัติ' : 'ลงเวลาเข้างานแล้ว')
@@ -103,8 +112,11 @@ async function checkIn(mode, descriptor) {
     await load()
   } catch (e) {
     const message = apiError(e)
-    if (message.includes('ใบหน้าไม่ตรง')) mismatch.value = message
-    toast.error(message)
+    if (face && (e?.response?.status === 403 || message.includes('ใบหน้าไม่ตรง'))) {
+      const name = await recognisedName(e, face)
+      mismatch.value = name ? `${message} (ระบบระบุว่าเป็น: ${name})` : message
+    }
+    toast.error(mismatch.value || message)
   } finally {
     busy.value = ''
   }
@@ -152,6 +164,10 @@ async function checkOut() {
               <div class="rounded-xl bg-slate-50 p-3"><p class="text-xs text-slate-500">เข้างาน</p><p class="text-xl font-bold">{{ fmtTime(today.check_in_at) }}</p></div>
               <div class="rounded-xl bg-slate-50 p-3"><p class="text-xs text-slate-500">ออกงาน</p><p class="text-xl font-bold">{{ fmtTime(today.check_out_at) }}</p></div>
             </div>
+            <div v-if="today.face_photo_url" class="mt-3 flex items-center gap-3">
+              <img :src="today.face_photo_url" alt="รูปหลักฐานตอนลงเวลา" class="h-16 w-16 shrink-0 rounded-xl object-cover" />
+              <p class="text-xs text-slate-500">รูปหลักฐานการสแกนใบหน้าตอนเข้างาน</p>
+            </div>
             <p v-if="today.reject_reason" class="mt-3 break-words text-sm text-rose-600">เหตุผลที่ไม่อนุมัติ: {{ today.reject_reason }}</p>
             <button v-if="!today.check_out_at && today.status !== 'rejected'" class="btn-primary mt-4 w-full" :disabled="!!busy" @click="confirmOut = true">ลงเวลาออกงาน</button>
           </template>
@@ -176,10 +192,8 @@ async function checkOut() {
           <span>{{ mismatch }}</span>
           <button type="button" class="btn-primary" :disabled="!!busy" @click="startScan">สแกนอีกครั้ง</button>
         </div>
-        <div v-if="needEnroll" class="mt-4 space-y-3">
-          <p class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">การลงเวลาแบบเข้าอาคารต้องยืนยันใบหน้า คุณยังไม่ได้ลงทะเบียนใบหน้า กรุณาลงทะเบียนด้านล่าง จากนั้นระบบจะเปิดกล้องสแกนเข้างานต่อให้ทันที</p>
-          <FaceEnroll @changed="onEnrollChanged" />
-        </div>
+        <p v-if="allowedModes.building && faceEnrolled === false" class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">การลงเวลาแบบเข้าอาคารต้องยืนยันใบหน้า กรุณาติดต่อ admin เพื่อลงทะเบียนใบหน้า</p>
+        <p v-else-if="allowedModes.building && faceEnrolled" class="mt-3 text-sm text-emerald-600">✓ ลงทะเบียนใบหน้าแล้ว</p>
         </template>
       </div>
 
