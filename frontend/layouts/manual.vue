@@ -8,9 +8,9 @@ const mobileOpen = ref(false)
 watch(() => route.path, () => (mobileOpen.value = false))
 // long menus scroll: bring the current page's item into view (it can sit under the pinned bottom item)
 const nav = ref(null)
-const revealActive = () => nextTick(() => nav.value?.querySelector('[aria-current="page"]')?.scrollIntoView({ block: 'nearest' }))
+const revealActive = () => requestAnimationFrame(() => nav.value?.querySelector('[data-active]')?.scrollIntoView({ block: 'nearest' }))
 onMounted(revealActive)
-watch(() => route.path, revealActive)
+watch([() => route.path, () => auth.user], revealActive, { flush: 'post' })
 const groups = computed(() => visibleManual(auth))
 const isActive = (slug) => route.path === `/manual/${slug}`
 </script>
@@ -29,7 +29,7 @@ const isActive = (slug) => route.path === `/manual/${slug}`
         </NuxtLink>
         <div v-for="g in groups" :key="g.key">
           <p class="mb-1 px-3 text-[11px] font-semibold uppercase tracking-wider text-slate-400">{{ g.title }}</p>
-          <NuxtLink v-for="t in g.topics" :key="t.slug" :to="`/manual/${t.slug}`" class="flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition" :class="isActive(t.slug) ? 'bg-brand-50 font-semibold text-brand-700' : 'text-slate-600 hover:bg-slate-50'">
+          <NuxtLink v-for="t in g.topics" :key="t.slug" :to="`/manual/${t.slug}`" class="flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition" :data-active="isActive(t.slug) || undefined" :class="isActive(t.slug) ? 'bg-brand-50 font-semibold text-brand-700' : 'text-slate-600 hover:bg-slate-50'">
             <span class="w-5 text-center">{{ t.icon }}</span>{{ t.title }}
           </NuxtLink>
         </div>
