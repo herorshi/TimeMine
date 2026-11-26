@@ -1,5 +1,5 @@
 <script setup>
-import { LEAVE_TYPES } from '~/utils/constants'
+import { LEAVE_TYPES, STATUS } from '~/utils/constants'
 import { apiError, fmtDate, fmtDateTime, dayjs } from '~/utils/format'
 
 const api = useApi()
@@ -88,6 +88,16 @@ async function doCancel() {
   }
 }
 const range = (r) => (r.start_date === r.end_date ? fmtDate(r.start_date) : `${fmtDate(r.start_date)} - ${fmtDate(r.end_date)}`)
+
+const columns = [
+  { key: 'type', label: 'ประเภท', filter: 'select', text: (r) => r.type_label, class: 'whitespace-nowrap' },
+  // date filter and sort use the start date
+  { key: 'start_date', label: 'วันที่ลา', filter: 'date', text: range, class: 'whitespace-nowrap' },
+  { key: 'days', label: 'จำนวน', text: (r) => `${r.days} วัน`, class: 'whitespace-nowrap' },
+  { key: 'reason', label: 'เหตุผล', text: (r) => r.reason || '-', class: 'min-w-[12rem] break-words' },
+  { key: 'status', label: 'สถานะ', filter: 'select', text: (r) => STATUS[r.status]?.label || r.status, class: 'min-w-[10rem]' },
+  { key: 'created_at', label: 'ส่งเมื่อ', filter: 'date', text: (r) => fmtDateTime(r.created_at), class: 'whitespace-nowrap text-slate-500' },
+]
 </script>
 
 <template>
@@ -112,28 +122,15 @@ const range = (r) => (r.start_date === r.end_date ? fmtDate(r.start_date) : `${f
         </div>
       </div>
 
-      <div v-if="!leaves.length" class="card"><EmptyState text="ยังไม่มีคำขอลา" /></div>
-      <div v-else class="table-wrap">
-        <table class="table">
-          <thead>
-            <tr><th>ประเภท</th><th>วันที่ลา</th><th>จำนวน</th><th>เหตุผล</th><th>สถานะ</th><th>ส่งเมื่อ</th><th /></tr>
-          </thead>
-          <tbody>
-            <tr v-for="r in leaves" :key="r.id">
-              <td class="whitespace-nowrap">{{ r.type_label }}</td>
-              <td class="whitespace-nowrap">{{ range(r) }}</td>
-              <td class="whitespace-nowrap">{{ r.days }} วัน</td>
-              <td class="min-w-[12rem] break-words">{{ r.reason || '-' }}</td>
-              <td class="min-w-[10rem]">
-                <StatusBadge :status="r.status" />
-                <p v-if="r.reject_reason" class="mt-1 break-words text-xs text-rose-600">เหตุผลที่ไม่อนุมัติ: {{ r.reject_reason }}</p>
-              </td>
-              <td class="whitespace-nowrap text-slate-500">{{ fmtDateTime(r.created_at) }}</td>
-              <td><button v-if="r.status === 'pending'" class="btn-secondary btn-sm whitespace-nowrap" @click="askCancel(r)">ยกเลิก</button></td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <DataTable :columns="columns" :rows="leaves" empty-text="ยังไม่มีคำขอลา">
+        <template #cell-status="{ row }">
+          <StatusBadge :status="row.status" />
+          <p v-if="row.reject_reason" class="mt-1 break-words text-xs text-rose-600">เหตุผลที่ไม่อนุมัติ: {{ row.reject_reason }}</p>
+        </template>
+        <template #actions="{ row }">
+          <button v-if="row.status === 'pending'" class="btn-secondary btn-sm whitespace-nowrap" @click="askCancel(row)">ยกเลิก</button>
+        </template>
+      </DataTable>
     </template>
 
     <AppModal v-model="showForm" title="ขอลางาน">
