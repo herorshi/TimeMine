@@ -14,6 +14,7 @@
     "@nuxtjs/tailwindcss": "^6.14.0",
     "@pinia/nuxt": "^0.11.0",
     "@vladmandic/face-api": "^1.7.15",
+    "@vuepic/vue-datepicker": "^14.1.0",
     "@vueuse/nuxt": "^13.0.0",
     "axios": "^1.13.0",
     "chart.js": "^4.6.2",
