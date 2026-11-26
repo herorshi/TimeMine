@@ -168,3 +168,7 @@ addColumn('announcements', 'image_url TEXT') // announcement image (Vercel Blob 
 addColumn('users', 'face_photo_url TEXT') // enrollment evidence photo
 addColumn('users', 'face_enrolled_at TEXT')
 addColumn('attendance', 'face_photo_url TEXT') // check-in evidence photo (building mode)
+addColumn('attendance', 'check_in_lat REAL') // geofence: location sent at check-in
+addColumn('attendance', 'check_in_lng REAL')
+addColumn('attendance', 'check_in_accuracy REAL')
+addColumn('attendance', 'location_distance REAL') // metres from the building (null = not computed)

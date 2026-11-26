@@ -8,6 +8,7 @@ import { getSettings } from '../lib/settings.js'
 import { identify, isDescriptor, readPhoto } from '../lib/face.js'
 import { saveImage, deleteImage } from '../lib/storage.js'
 import { notifyAdmins } from '../lib/line.js'
+import { distanceMeters, readLocation } from '../lib/geo.js'
 
 const MODES = ['office', 'building', 'wfh']
 const STATUSES = ['approved', 'pending', 'rejected']
@@ -36,6 +37,17 @@ router.post('/check-in', async (req, res) => {
   if (!MODES.includes(mode)) throw httpError(400, 'รูปแบบการเข้างานไม่ถูกต้อง')
   if (await todayRow(req.user.id)) throw httpError(400, 'วันนี้ลงเวลาเข้างานแล้ว')
 
+  // geofence runs before any face match / photo save: an out-of-area attempt records nothing
+  const settings = await getSettings()
+  const location = readLocation(req.body)
+  let locationDistance = null
+  if (mode !== 'wfh' && settings.office_lat !== '' && settings.office_lng !== '') {
+    if (!location) throw httpError(400, 'กรุณาเปิดการเข้าถึงตำแหน่งที่ตั้ง (Location) เพื่อลงเวลา')
+    locationDistance = Math.round(distanceMeters(location.lat, location.lng, Number(settings.office_lat), Number(settings.office_lng)))
+    const radius = Number(settings.office_radius_m)
+    if (locationDistance > radius) throw httpError(400, `คุณอยู่นอกพื้นที่ตึก (ห่าง ${locationDistance} ม. เกินรัศมี ${radius} ม.)`)
+  }
+
   let faceVerified = 0
   let faceDistance = null
   let facePhotoUrl = null
@@ -51,12 +63,12 @@ router.post('/check-in', async (req, res) => {
 
   const now = new Date()
   const checkInAt = toDateTimeStr(now)
-  const settings = await getSettings()
   // a concurrent check-in can pass the todayRow check above: UNIQUE (user_id, date) decides
-  const info = await db.prepare(`INSERT INTO attendance (user_id, date, mode, check_in_at, status, late_minutes, face_verified, face_distance, face_photo_url, note)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (user_id, date) DO NOTHING`).run(
+  const info = await db.prepare(`INSERT INTO attendance (user_id, date, mode, check_in_at, status, late_minutes, face_verified, face_distance, face_photo_url, note, check_in_lat, check_in_lng, check_in_accuracy, location_distance)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT (user_id, date) DO NOTHING`).run(
     req.user.id, toDateStr(now), mode, checkInAt, mode === 'wfh' ? 'pending' : 'approved',
     lateMinutes(checkInAt, settings), faceVerified, faceDistance, facePhotoUrl, String(note || '').trim() || null,
+    location?.lat ?? null, location?.lng ?? null, location?.accuracy ?? null, locationDistance,
   )
   if (!info.changes) {
     await deleteImage(facePhotoUrl)

@@ -8,6 +8,19 @@ const form = ref(null)
 const loading = ref(true)
 const busy = ref(false)
 const { refresh: refreshAppSettings } = useAppSettings()
+const { getPosition } = useGeolocation()
+const locating = ref(false)
+const accuracy = ref(null)
+const hasPoint = computed(() => !!(form.value?.office_lat !== '' && form.value?.office_lat != null && form.value?.office_lng !== '' && form.value?.office_lng != null))
+async function useCurrentPosition() {
+  locating.value = true
+  try {
+    const p = await getPosition()
+    form.value.office_lat = p.lat.toFixed(6)
+    form.value.office_lng = p.lng.toFixed(6)
+    accuracy.value = Math.round(p.accuracy)
+  } catch (e) { toast.error(e.message) } finally { locating.value = false }
+}
 
 const fields = [
   { key: 'company_name', label: 'ชื่อบริษัท', type: 'text', wide: true },
@@ -71,6 +84,29 @@ async function save() {
             <span aria-hidden="true">{{ p.icon }}</span>สาย {{ fmtMinutes(p.minutes) }}
           </span>
         </div>
+      </div>
+      <div class="mt-6 border-t border-slate-100 pt-5">
+        <h2 class="mb-3 font-semibold text-slate-800">ตำแหน่งตึก (ตรวจพิกัดตอนลงเวลา)</h2>
+        <div class="grid gap-4 sm:grid-cols-3">
+          <div>
+            <label class="label" for="office_lat">ละติจูด</label>
+            <input id="office_lat" v-model="form.office_lat" type="number" step="any" class="input" />
+          </div>
+          <div>
+            <label class="label" for="office_lng">ลองจิจูด</label>
+            <input id="office_lng" v-model="form.office_lng" type="number" step="any" class="input" />
+          </div>
+          <div>
+            <label class="label" for="office_radius_m">รัศมี (เมตร)</label>
+            <input id="office_radius_m" v-model="form.office_radius_m" type="number" min="20" max="5000" step="any" class="input" required />
+          </div>
+        </div>
+        <div class="mt-3 flex flex-wrap items-center gap-3">
+          <button type="button" class="btn-secondary" :disabled="locating" @click="useCurrentPosition"><Spinner v-if="locating" class="h-4 w-4" />ใช้ตำแหน่งปัจจุบัน</button>
+          <span v-if="accuracy != null" class="text-xs text-slate-500">ความแม่นยำ ±{{ accuracy }} ม.</span>
+          <a v-if="hasPoint" :href="`https://www.google.com/maps?q=${form.office_lat},${form.office_lng}`" target="_blank" rel="noopener" class="text-sm text-brand-600 underline">ดูบนแผนที่</a>
+        </div>
+        <p v-if="!hasPoint" class="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">ยังไม่ได้ตั้งพิกัดตึก — ตอนนี้ระบบยังไม่ตรวจสถานที่ตอนลงเวลา</p>
       </div>
       <div class="mt-5 flex justify-end">
         <button type="submit" class="btn-primary" :disabled="busy"><Spinner v-if="busy" class="h-4 w-4" />บันทึก</button>

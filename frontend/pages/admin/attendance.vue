@@ -184,6 +184,12 @@ async function reject(reason) {
           <dd>{{ evidence.face_distance != null ? Number(evidence.face_distance).toFixed(3) : '-' }}</dd>
           <dt class="text-slate-500">เวลาลงเข้า</dt>
           <dd>{{ fmtDateTime(evidence.check_in_at) }}</dd>
+          <dt class="text-slate-500">ระยะห่างจากตึก</dt>
+          <dd>{{ evidence.location_distance != null ? `${Math.round(evidence.location_distance)} ม.` : '-' }}</dd>
+          <template v-if="evidence.check_in_lat != null && evidence.check_in_lng != null">
+            <dt class="text-slate-500">ตำแหน่งที่ลงเวลา</dt>
+            <dd><a :href="`https://www.google.com/maps?q=${evidence.check_in_lat},${evidence.check_in_lng}`" target="_blank" rel="noopener" class="text-brand-600 underline">ดูบนแผนที่</a></dd>
+          </template>
         </dl>
       </template>
     </AppModal>

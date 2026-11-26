@@ -5,7 +5,8 @@ import { dayjs, fmtDate, fmtDateLong, fmtTime, fmtMinutes, fmtNumber, apiError }
 const api = useApi()
 const toast = useToast()
 const auth = useAuthStore()
-const { lateLevel } = useAppSettings()
+const { lateLevel, settings } = useAppSettings()
+const { getPosition } = useGeolocation()
 const bannerClass = {
   yellow: 'border-amber-200 bg-amber-50 text-amber-800',
   red: 'border-rose-200 bg-rose-50 text-rose-700',
@@ -32,6 +33,10 @@ const note = ref('')
 const scanOpen = ref(false)
 const confirmOut = ref(false)
 const faceEnrolled = ref(null) // null = unknown
+const location = ref(null) // { lat, lng, accuracy, at } from the last successful locate
+const LOCATION_MAX_AGE_MS = 2 * 60 * 1000
+const geofence = computed(() => !!(settings.value?.office_lat && settings.value?.office_lng))
+const needsLocation = (mode) => geofence.value && (mode === 'office' || mode === 'building')
 const mismatch = ref('') // face mismatch message, with an immediate retry
 
 const timeText = (v) => (v ? fmtTime(v) : null)
@@ -69,6 +74,21 @@ onMounted(() => {
   loadFaceStatus().catch(() => {}) // status hint only; startScan() re-checks and reports errors
 })
 
+// Position for a geofenced check-in. Reuses a fix newer than maxAgeMs; null (after a toast) on failure.
+async function ensureLocation(maxAgeMs = 0) {
+  const l = location.value
+  if (l && Date.now() - l.at <= maxAgeMs) return l
+  try {
+    location.value = { ...(await getPosition()), at: Date.now() }
+    return location.value
+  } catch (e) {
+    location.value = null
+    toast.error(e.message)
+    return null
+  }
+}
+const toPayload = (l) => ({ lat: l.lat, lng: l.lng, accuracy: l.accuracy })
+
 function pick(mode) {
   mismatch.value = ''
   if (mode === 'building') startScan()
@@ -79,6 +99,7 @@ async function startScan() {
   busy.value = 'building'
   mismatch.value = ''
   try {
+    if (needsLocation('building') && !(await ensureLocation(LOCATION_MAX_AGE_MS))) return
     await loadFaceStatus()
     scanOpen.value = faceEnrolled.value
     if (!faceEnrolled.value) toast.warning('กรุณาติดต่อ admin เพื่อลงทะเบียนใบหน้า')
@@ -104,7 +125,14 @@ async function checkIn(mode, face) {
   if (busy.value) return
   busy.value = mode
   try {
-    const { data } = await api.post('/attendance/check-in', { mode, ...face, note: note.value })
+    let loc
+    if (needsLocation(mode)) {
+      // office: always a fresh fix; building: reuse the one taken before the scan unless it is stale
+      const l = await ensureLocation(mode === 'building' ? LOCATION_MAX_AGE_MS : 0)
+      if (!l) return
+      loc = toPayload(l)
+    }
+    const { data } = await api.post('/attendance/check-in', { mode, ...face, ...(loc ? { location: loc } : {}), note: note.value })
     today.value = data
     note.value = ''
     toast.success(mode === 'wfh' ? 'ส่งคำขอ WFH แล้ว รออนุมัติ' : 'ลงเวลาเข้างานแล้ว')
@@ -188,6 +216,7 @@ async function checkOut() {
             <span>{{ m.label }}</span>
           </button>
         </div>
+        <p v-if="geofence" class="mt-3 text-sm text-slate-500">📍 Office และ Building ต้องอยู่ในรัศมี {{ settings.office_radius_m || 200 }} ม. จากตึก</p>
         <div v-if="mismatch" class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">
           <span>{{ mismatch }}</span>
           <button type="button" class="btn-primary" :disabled="!!busy" @click="startScan">สแกนอีกครั้ง</button>

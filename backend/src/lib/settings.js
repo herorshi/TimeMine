@@ -11,6 +11,9 @@ export const DEFAULT_SETTINGS = {
   work_hours_per_day: '8',
   ot_multiplier: '1.5',
   face_threshold: '0.5',      // euclidean distance; lower = stricter
+  office_lat: '',             // building latitude for check-in geofence ('' = geofence off)
+  office_lng: '',             // building longitude ('' = geofence off)
+  office_radius_m: '200',     // allowed distance from the building, metres
 }
 
 export async function getSettings() {
