@@ -1,6 +1,6 @@
 <script setup>
 import { ROLE_LABELS } from '~/utils/constants'
-import { fmtDate, fmtMoney, apiError } from '~/utils/format'
+import { fmtDate, fmtDateTime, fmtMoney, apiError } from '~/utils/format'
 
 const api = useApi()
 const auth = useAuthStore()
@@ -21,6 +21,13 @@ async function load() {
   } catch (e) { toast.error(apiError(e)) } finally { loading.value = false }
 }
 onMounted(load)
+
+// face enrollment is done by an admin: the employee only sees the status
+const face = ref(null)
+const faceError = ref('')
+onMounted(async () => {
+  try { face.value = (await api.get('/face/status')).data } catch (e) { faceError.value = apiError(e) }
+})
 
 const fields = computed(() => {
   const u = user.value
@@ -88,7 +95,19 @@ async function savePassword() {
           </div>
         </dl>
       </div>
-      <FaceEnroll />
+      <div class="card">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h2 class="text-base font-semibold text-slate-800">ใบหน้าสำหรับสแกนเข้างาน</h2>
+          <StatusBadge v-if="face" :label="face.enrolled ? 'ลงทะเบียนแล้ว' : 'ยังไม่ได้ลงทะเบียน'" :color="face.enrolled ? 'emerald' : 'amber'" />
+        </div>
+        <p v-if="faceError" class="mt-3 text-sm text-rose-600" role="alert">{{ faceError }}</p>
+        <LoadingBlock v-else-if="!face" />
+        <div v-else-if="face.enrolled" class="mt-3 flex flex-wrap items-center gap-4">
+          <img v-if="face.photo_url" :src="face.photo_url" alt="รูปใบหน้าที่ลงทะเบียน" class="h-24 w-24 shrink-0 rounded-xl object-cover" />
+          <p class="text-sm text-slate-500">ลงทะเบียนเมื่อ {{ fmtDateTime(face.enrolled_at) }}</p>
+        </div>
+        <p v-else class="mt-3 text-sm text-amber-700">กรุณาติดต่อ admin เพื่อลงทะเบียนใบหน้า</p>
+      </div>
     </div>
 
     <AppModal v-model="editOpen" title="แก้ไขข้อมูลส่วนตัว">

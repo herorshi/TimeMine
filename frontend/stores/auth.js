@@ -25,6 +25,13 @@ export const useAuthStore = defineStore('auth', {
   actions: {
     async login(email, password) {
       const { data } = await useApi().post('/auth/login', { email, password })
+      this.setSession(data)
+    },
+    async faceLogin(descriptor, photo) {
+      const { data } = await useApi().post('/auth/face-login', { descriptor, photo })
+      this.setSession(data)
+    },
+    setSession(data) {
       this.token = data.token
       this.user = data.user
       try { localStorage.setItem(KEY, data.token) } catch {}
