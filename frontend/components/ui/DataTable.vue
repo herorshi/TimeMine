@@ -137,7 +137,7 @@ const pageList = computed(() => {
           <option v-for="s in pageSizes" :key="s" :value="s">{{ s }} / หน้า</option>
         </select>
       </div>
-      <div v-if="pages > 1" class="flex items-center gap-1">
+      <div class="flex items-center gap-1">
         <button class="btn-ghost btn-sm" :disabled="page === 1" aria-label="หน้าก่อน" @click="page--">‹</button>
         <template v-for="(p, i) in pageList" :key="i">
           <span v-if="p === '…'" class="px-1">…</span>
