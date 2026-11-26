@@ -1,5 +1,6 @@
 <script setup>
 import { fmtDate, fmtMoney, fmtNumber, fmtMinutes, apiError, dayjs, todayStr } from '~/utils/format'
+import { STATUS } from '~/utils/constants'
 
 definePageMeta({ roles: ['admin'] })
 const api = useApi()
@@ -14,6 +15,7 @@ const CARDS = {
 }
 const MONEY = ['amount', 'base', 'ot', 'deduction', 'total']
 const DATES = ['date', 'start_date', 'end_date']
+const SELECTS = ['department', 'type_label', 'status_label']
 
 const tab = ref('attendance')
 const month = ref(todayStr().slice(0, 7))
@@ -57,6 +59,22 @@ const cell = (key, v) => {
   if (typeof v === 'number') return fmtNumber(v)
   return v || '-'
 }
+
+// the server sends [[key, label]]; filters match the text shown in the cell
+const columns = computed(() => (report.value?.columns || []).map(([key, label]) => {
+  const col = {
+    key,
+    label,
+    filter: SELECTS.includes(key) ? 'select' : DATES.includes(key) ? 'date' : 'text',
+    text: (r) => cell(key, r[key]),
+    class: key === 'reason' ? 'min-w-[14rem] break-words' : 'whitespace-nowrap',
+  }
+  if (key === 'status_label') {
+    col.value = (r) => r.status
+    col.text = (r) => STATUS[r.status]?.label || r.status
+  }
+  return col
+}))
 
 async function download(format) {
   downloading.value = format
@@ -114,20 +132,9 @@ async function blobError(e) {
         <StatCard v-for="[key, label, icon, fmt] in CARDS[report.tab]" :key="key" :label="label" :icon="icon" :value="(fmt || fmtNumber)(report.summary[key])" />
       </div>
       <p v-if="report.tab === 'payroll'" class="mb-3 text-xs text-slate-500">ยอดย้อนหลังคำนวณจากเงินเดือนและการตั้งค่าปัจจุบัน</p>
-      <div v-if="!report.rows.length" class="card"><EmptyState text="ไม่มีข้อมูลในช่วงเวลานี้" /></div>
-      <div v-else class="table-wrap">
-        <table class="table">
-          <thead><tr><th v-for="[key, label] in report.columns" :key="key">{{ label }}</th></tr></thead>
-          <tbody>
-            <tr v-for="(r, i) in report.rows" :key="i">
-              <td v-for="[key] in report.columns" :key="key" :class="key === 'reason' ? 'min-w-[14rem] break-words' : 'whitespace-nowrap'">
-                <StatusBadge v-if="key === 'status_label'" :status="r.status" />
-                <template v-else>{{ cell(key, r[key]) }}</template>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <DataTable :key="report.tab" :columns="columns" :rows="report.rows" empty-text="ไม่มีข้อมูลในช่วงเวลานี้">
+        <template #cell-status_label="{ row }"><StatusBadge :status="row.status" /></template>
+      </DataTable>
     </template>
   </div>
 </template>
