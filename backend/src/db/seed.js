@@ -6,6 +6,7 @@ import { db } from './index.js'
 import { DEFAULT_SETTINGS } from '../lib/settings.js'
 import { toDateStr, lateMinutes } from '../lib/time.js'
 import { otAmount } from '../lib/payroll.js'
+import { attendanceScore, totalScore, grade } from '../lib/kpi.js'
 
 let seed = 42
 const rnd = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646
@@ -38,8 +39,22 @@ const userRows = users.map(([code, email, pw, name, g, role, dept, pos, sal]) =>
   [code, email, hash(pw), name, g, role, dept, pos, sal, `08${Math.floor(10000000 + rnd() * 89999999)}`,
     `20${pad(18 + Math.floor(rnd() * 6))}-${pad(1 + Math.floor(rnd() * 12))}-01`, `19${85 + Math.floor(rnd() * 14)}-${pad(1 + Math.floor(rnd() * 12))}-${pad(1 + Math.floor(rnd() * 28))}`])
 
+// KPI demo profile per employee: how often late / absent, then quality, productivity, teamwork, responsibility.
+// Last year has no attendance rows, so its attendance score is given here.
+const kpiProfiles = {
+  A001: { late: 0.02, absent: 0.004, now: [5, 4, 4, 4], nowStatus: 'draft', prev: [4, 4, 5, 4], prevAtt: 91.5 },
+  E001: { late: 0.01, absent: 0, now: [5, 5, 5, 5], nowStatus: 'final', prev: [5, 5, 4, 5], prevAtt: 96 },
+  E002: { late: 0.02, absent: 0.004, now: [5, 4, 5, 4], nowStatus: 'final', prev: [5, 5, 5, 5], prevAtt: 94.5 },
+  E003: { late: 0.08, absent: 0.012, now: [3, 3, 4, 3], nowStatus: 'final', prev: [3, 4, 3, 3], prevAtt: 72 },
+  E004: { late: 0.04, absent: 0.008, now: [4, 4, 4, 3], nowStatus: 'draft', prev: [4, 4, 4, 4], prevAtt: 85 },
+  E005: { late: 0.01, absent: 0, now: [5, 5, 5, 5], nowStatus: 'final', prev: [5, 5, 4, 4], prevAtt: 93 },
+  E006: { late: 0.03, absent: 0.004, now: [4, 5, 4, 4], nowStatus: 'final', prev: [4, 4, 4, 3], prevAtt: 88 },
+  E007: { late: 0.05, absent: 0.008, now: [4, 4, 4, 4], nowStatus: 'final', prev: [3, 3, 3, 3], prevAtt: 64 },
+  E008: { late: 0.1, absent: 0.016, now: [3, 2, 3, 2], nowStatus: 'draft', prev: [2, 2, 3, 2], prevAtt: 55 },
+}
+
 async function seedAll() {
-for (const t of ['warnings', 'announcements', 'holidays', 'ot_requests', 'leaves', 'attendance', 'settings', 'users', 'sqlite_sequence'])
+for (const t of ['kpi_evaluations', 'warnings', 'announcements', 'holidays', 'ot_requests', 'leaves', 'attendance', 'settings', 'users', 'sqlite_sequence'])
   await db.prepare(`DELETE FROM ${t}`).run()
 
 await insertMany('settings', 'key,value', Object.entries(DEFAULT_SETTINGS))
@@ -78,23 +93,26 @@ for (const [date, name] of [...holidays].sort(([a], [b]) => a.localeCompare(b)))
 await insertMany('holidays', 'date,name,year', [...holidays].map(([date, name]) => [date, name, Number(date.slice(0, 4))]))
 const holidaySet = new Set(holidays.keys())
 
-// Attendance for the last ~6 months of working days
+// Attendance for working days: the last ~6 months, extended back to 1 January so this year's KPI is meaningful
 const s = DEFAULT_SETTINGS
 const attRows = []
 const today = new Date()
 const start = new Date(today); start.setMonth(start.getMonth() - 6)
+const jan1 = new Date(today.getFullYear(), 0, 1)
+if (jan1 < start) start.setTime(jan1.getTime())
 for (let d = new Date(start); d < today; d.setDate(d.getDate() + 1)) {
   const ds = toDateStr(d)
   if ([0, 6].includes(d.getDay()) || holidaySet.has(ds) || ds === toDateStr(today)) continue
   for (const u of all) {
-    if (rnd() < 0.04) continue // absent / on leave
+    const profile = kpiProfiles[u.emp_code] || { late: 0.03, absent: 0.004 }
+    if (rnd() < profile.absent) continue // absent
     const r = rnd()
     const mode = r < 0.55 ? 'office' : r < 0.85 ? 'building' : 'wfh'
-    const lateish = rnd() < 0.18
+    const lateish = rnd() < profile.late
     const mins = lateish ? 9 * 60 + 6 + Math.floor(rnd() * 50) : 8 * 60 + 15 + Math.floor(rnd() * 50)
     const ci = `${ds} ${pad(Math.floor(mins / 60))}:${pad(mins % 60)}:00`
     const co = `${ds} ${pad(17 + Math.floor(rnd() * 3))}:${pad(Math.floor(rnd() * 60))}:00`
-    const status = mode === 'wfh' ? (rnd() < 0.9 ? 'approved' : 'rejected') : 'approved'
+    const status = mode === 'wfh' ? (rnd() < 0.99 ? 'approved' : 'rejected') : 'approved'
     attRows.push([u.id, ds, mode, ci, co, status, lateMinutes(ci, s), mode === 'building' ? 1 : 0, mode === 'building' ? 0.32 : null,
       mode === 'wfh' ? admin.id : null, mode === 'wfh' ? ci : null, status === 'rejected' ? 'ไม่มีงานที่ต้องทำจากบ้านวันนั้น' : null])
   }
@@ -160,6 +178,23 @@ insA('ปรับเวลาเข้างานช่วงปลายป�
 insA('ผลประกอบการไตรมาส 3', 'บริษัทมีผลประกอบการเติบโต 18% ขอบคุณพนักงานทุกท่านที่ร่วมแรงร่วมใจ', 'news', null, 0, exec.id, past(20))
 
 await insertMany('announcements', 'title,body,type,event_date,pinned,author_id,created_at', annRows)
+
+// KPI evaluations: last year all final, this year a mix of final / draft
+const year = today.getFullYear()
+const kpiRows = []
+for (const u of all) {
+  const p = kpiProfiles[u.emp_code]
+  if (!p) continue
+  const add = (y, att, [quality, productivity, teamwork, responsibility], status, at) => {
+    const total = totalScore({ attendance_score: att, quality, productivity, teamwork, responsibility })
+    kpiRows.push([u.id, y, att, quality, productivity, teamwork, responsibility, total, grade(total),
+      total >= 80 ? 'ผลงานดี รักษามาตรฐานต่อไป' : 'ควรปรับปรุงการตรงต่อเวลาและคุณภาพงาน',
+      status, u.role === 'admin' ? exec.id : admin.id, at, at])
+  }
+  add(year - 1, p.prevAtt, p.prev, 'final', `${year - 1}-12-20 10:00:00`)
+  add(year, (await attendanceScore(u, year)).score, p.now, p.nowStatus, `${toDateStr(today)} 10:00:00`)
+}
+await insertMany('kpi_evaluations', 'user_id,year,attendance_score,quality,productivity,teamwork,responsibility,total_score,grade,comment,status,evaluator_id,created_at,updated_at', kpiRows)
 return all.length
 }
 
