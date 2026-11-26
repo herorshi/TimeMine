@@ -63,8 +63,8 @@ router.post('/forgot', async (req, res) => {
   const email = String(req.body?.email || '').trim().toLowerCase()
   const user = await db.prepare('SELECT id, email, name FROM users WHERE lower(email) = ? AND active = 1').get(email)
   const now = Date.now()
-  // unknown email and rate-limited requests get the same answer as success (no user enumeration)
-  if (!user) return res.json({ ok: true })
+  // owner ruling 2026-11-26: tell the user when the email is not registered (accepts the enumeration trade-off)
+  if (!user) throw httpError(404, 'ไม่พบอีเมลนี้ในระบบ')
 
   const token = crypto.randomBytes(32).toString('hex')
   const createdAt = toDateTimeStr(new Date(now))
@@ -82,7 +82,7 @@ router.post('/forgot', async (req, res) => {
 
   const sending = sendMail(resetMail(user, `${APP_URL}/reset-password?token=${token}`, expiresAt))
     .catch((err) => { console.error(`[mail] send failed: ${err.code || err.message}`); return {} })
-  // real SMTP: don't wait, so response time doesn't reveal whether the account exists
+  // real SMTP: don't wait for delivery; the link is already stored
   if (!usingEthereal()) return res.json({ ok: true })
   const { previewUrl } = await sending
   res.json({ ok: true, ...(previewUrl && { preview_url: previewUrl }) })
