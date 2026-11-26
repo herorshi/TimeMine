@@ -25,30 +25,30 @@ function parse(body) {
   return { title, body: text, type, event_date, pinned: body?.pinned ? 1 : 0 }
 }
 
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const type = TYPES.includes(req.query.type) ? req.query.type : null
-  res.json(db.prepare(`${SELECT} WHERE (@type IS NULL OR a.type = @type) ORDER BY a.pinned DESC, a.created_at DESC, a.id DESC`).all({ type }))
+  res.json(await db.prepare(`${SELECT} WHERE (@type IS NULL OR a.type = @type) ORDER BY a.pinned DESC, a.created_at DESC, a.id DESC`).all({ type }))
 })
 
-router.post('/', requireRole('admin'), (req, res) => {
+router.post('/', requireRole('admin'), async (req, res) => {
   const a = parse(req.body)
-  const { lastInsertRowid } = db.prepare(
+  const { lastInsertRowid } = await db.prepare(
     'INSERT INTO announcements (title, body, type, event_date, pinned, author_id) VALUES (@title, @body, @type, @event_date, @pinned, @author_id)',
   ).run({ ...a, author_id: req.user.id })
-  res.status(201).json(find(lastInsertRowid))
+  res.status(201).json(await find(lastInsertRowid))
 })
 
 // partial body allowed (pin toggle sends only { pinned })
-router.put('/:id', requireRole('admin'), (req, res) => {
-  const old = find(req.params.id)
+router.put('/:id', requireRole('admin'), async (req, res) => {
+  const old = await find(req.params.id)
   if (!old) throw httpError(404, 'ไม่พบประกาศ')
   const a = parse({ ...old, ...req.body })
-  db.prepare('UPDATE announcements SET title = @title, body = @body, type = @type, event_date = @event_date, pinned = @pinned WHERE id = @id').run({ ...a, id: old.id })
-  res.json(find(old.id))
+  await db.prepare('UPDATE announcements SET title = @title, body = @body, type = @type, event_date = @event_date, pinned = @pinned WHERE id = @id').run({ ...a, id: old.id })
+  res.json(await find(old.id))
 })
 
-router.delete('/:id', requireRole('admin'), (req, res) => {
-  if (!db.prepare('DELETE FROM announcements WHERE id = ?').run(req.params.id).changes) throw httpError(404, 'ไม่พบประกาศ')
+router.delete('/:id', requireRole('admin'), async (req, res) => {
+  if (!(await db.prepare('DELETE FROM announcements WHERE id = ?').run(req.params.id)).changes) throw httpError(404, 'ไม่พบประกาศ')
   res.json({ ok: true })
 })
 
