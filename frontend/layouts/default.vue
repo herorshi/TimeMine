@@ -24,6 +24,7 @@ const groups = [
     { to: '/admin/ot', perm: 'approve.ot', label: 'อนุมัติ OT', icon: '💰' },
     { to: '/admin/warnings', perm: 'warnings.manage', label: 'ใบเตือน', icon: '📝' },
     { to: '/admin/announcements', perm: 'announcements.manage', label: 'จัดการประกาศ', icon: '📣' },
+    { to: '/admin/faces', perm: 'employees.manage', label: 'ลงทะเบียนใบหน้า', icon: '🧑‍💼' },
     { to: '/admin/employees', perm: 'employees.manage', label: 'จัดการพนักงาน', icon: '👥' },
     { to: '/admin/holidays', perm: 'holidays.manage', label: 'จัดการวันหยุด', icon: '🗓️' },
     { to: '/admin/kpi', perm: 'kpi.manage', label: 'ประเมิน KPI', icon: '🏅' },
