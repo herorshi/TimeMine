@@ -120,12 +120,18 @@ router.get('/overview', requireRole('executive'), (req, res) => {
     WHERE a.status != 'rejected' AND a.late_minutes > 0 AND substr(a.date,1,4) = ?
     GROUP BY u.id ORDER BY late_count DESC, late_minutes DESC LIMIT 10`).all(y)
 
-  const years = new Set(db.prepare('SELECT DISTINCT substr(date,1,4) y FROM attendance').all().map((r) => Number(r.y)))
-  years.add(Number(today.slice(0, 4)))
+  // every year from the earliest record to the current year, at least the last 3 (floor 2000 = what ?year accepts)
+  const firstDate = db.prepare(`SELECT MIN(d) d FROM (
+    SELECT MIN(date) d FROM attendance
+    UNION ALL SELECT MIN(date) FROM ot_requests
+    UNION ALL SELECT MIN(start_date) FROM leaves)`).get().d
+  const thisYear = Number(today.slice(0, 4))
+  const minYear = Math.max(2000, Math.min(thisYear - 2, Number(firstDate?.slice(0, 4) || thisYear)))
+  const years = Array.from({ length: thisYear - minYear + 1 }, (_, i) => thisYear - i)
 
   res.json({
     year,
-    years: [...years].sort((a, b) => b - a),
+    years,
     headcount: users.length,
     months,
     totals,
