@@ -1,5 +1,5 @@
 <script setup>
-import { CHECKIN_MODES } from '~/utils/constants'
+import { CHECKIN_MODES, STATUS } from '~/utils/constants'
 import { dayjs, fmtDate, fmtTime, fmtMinutes, fmtNumber, apiError } from '~/utils/format'
 
 const api = useApi()
@@ -20,13 +20,20 @@ const loading = ref(true)
 const busy = ref('') // mode being checked in, or 'out'
 const today = ref(null)
 const history = ref([])
-const PAGE_SIZE = 20
-const shown = ref(PAGE_SIZE)
-const visibleHistory = computed(() => history.value.slice(0, shown.value))
 const late = ref({ count: 0, minutes: 0, month_count: 0, month_minutes: 0 })
 const note = ref('')
 const scanOpen = ref(false)
 const confirmOut = ref(false)
+
+const timeText = (v) => (v ? fmtTime(v) : null)
+const historyColumns = [
+  { key: 'date', label: 'วันที่', filter: 'date', text: (r) => fmtDate(r.date) },
+  { key: 'mode', label: 'รูปแบบ', filter: 'select', text: (r) => `${CHECKIN_MODES[r.mode]?.icon || ''} ${CHECKIN_MODES[r.mode]?.label || r.mode}`.trim() },
+  { key: 'check_in_at', label: 'เข้า', value: (r) => timeText(r.check_in_at), text: (r) => fmtTime(r.check_in_at) },
+  { key: 'check_out_at', label: 'ออก', value: (r) => timeText(r.check_out_at), text: (r) => fmtTime(r.check_out_at) },
+  { key: 'late_minutes', label: 'มาสาย', value: (r) => (r.late_minutes > 0 ? r.late_minutes : null), text: (r) => (r.late_minutes > 0 ? `สาย ${fmtMinutes(r.late_minutes)}` : '-') },
+  { key: 'status', label: 'สถานะ', filter: 'select', text: (r) => STATUS[r.status]?.label || r.status },
+]
 
 async function load() {
   try {
@@ -145,29 +152,13 @@ async function checkOut() {
 
       <div class="min-w-0">
         <h2 class="mb-3 font-semibold">ประวัติการลงเวลา</h2>
-        <div v-if="!history.length" class="card"><EmptyState text="ยังไม่มีประวัติการลงเวลา" /></div>
-        <div v-else class="table-wrap">
-          <table class="table whitespace-nowrap">
-            <thead><tr><th>วันที่</th><th>รูปแบบ</th><th>เข้า</th><th>ออก</th><th>มาสาย</th><th>สถานะ</th></tr></thead>
-            <tbody>
-              <tr v-for="r in visibleHistory" :key="r.id">
-                <td>{{ fmtDate(r.date) }}</td>
-                <td>{{ CHECKIN_MODES[r.mode]?.icon }} {{ CHECKIN_MODES[r.mode]?.label }}</td>
-                <td>{{ fmtTime(r.check_in_at) }}</td>
-                <td>{{ fmtTime(r.check_out_at) }}</td>
-                <td><StatusBadge v-if="r.late_minutes > 0" color="amber" :label="`สาย ${fmtMinutes(r.late_minutes)}`" /><span v-else>-</span></td>
-                <td>
-                  <StatusBadge :status="r.status" />
-                  <p v-if="r.reject_reason" class="mt-1 max-w-xs whitespace-normal break-words text-xs text-rose-600">{{ r.reject_reason }}</p>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div v-if="history.length > shown" class="mt-3 flex flex-col items-center gap-1">
-          <button type="button" class="btn-secondary" @click="shown += PAGE_SIZE">แสดงเพิ่ม</button>
-          <p class="text-xs text-slate-400">แสดง {{ fmtNumber(visibleHistory.length) }} จาก {{ fmtNumber(history.length) }} รายการ</p>
-        </div>
+        <DataTable :columns="historyColumns" :rows="history" row-key="id" empty-text="ยังไม่มีประวัติการลงเวลา" class="whitespace-nowrap">
+          <template #cell-late_minutes="{ row }"><StatusBadge v-if="row.late_minutes > 0" color="amber" :label="`สาย ${fmtMinutes(row.late_minutes)}`" /><span v-else>-</span></template>
+          <template #cell-status="{ row }">
+            <StatusBadge :status="row.status" />
+            <p v-if="row.reject_reason" class="mt-1 w-48 whitespace-normal break-words text-xs text-rose-600">{{ row.reject_reason }}</p>
+          </template>
+        </DataTable>
       </div>
     </div>
 
