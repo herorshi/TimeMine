@@ -1,6 +1,7 @@
 <script setup>
 import { ROLE_LABELS } from '~/utils/constants'
 import { fmtDate, fmtMoney, apiError } from '~/utils/format'
+import { cleanEmail, isEmail, EMAIL_PATTERN, EMAIL_HINT, cleanPhone, isPhone, PHONE_PATTERN, PHONE_HINT } from '~/utils/validate'
 definePageMeta({ roles: ['admin'] })
 
 const api = useApi()
@@ -22,6 +23,30 @@ const selected = ref(null) // null = creating
 const newPassword = ref('')
 const blank = { emp_code: '', email: '', password: '', name: '', gender: 'M', role: 'employee', department: '', position: '', phone: '', address: '', birthdate: '', start_date: '', salary: 0 }
 const form = reactive({ ...blank })
+
+const BASE_DEPARTMENTS = ['HR', 'Management', 'Engineering', 'Sales', 'Marketing', 'Finance', 'IT', 'General']
+const departmentOptions = computed(() => {
+  const set = new Set(BASE_DEPARTMENTS)
+  for (const u of users.value) { const d = String(u.department || '').trim(); if (d) set.add(d) }
+  if (form.department) set.add(form.department)
+  return [...set].sort((a, b) => a.localeCompare(b))
+})
+
+// salary: Number in state, comma-grouped text for display (max 2 decimals)
+const fmtSalaryText = (raw) => {
+  let t = String(raw ?? '').replace(/[^\d.]/g, '')
+  const i = t.indexOf('.')
+  if (i >= 0) t = t.slice(0, i + 1) + t.slice(i + 1).replace(/\./g, '').slice(0, 2)
+  const [int, dec] = t.split('.')
+  const grouped = (int || '').replace(/^0+(?=\d)/, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return dec !== undefined ? (grouped || '0') + '.' + dec : grouped
+}
+const salaryText = computed(() => fmtSalaryText(form.salary))
+function onSalaryInput(e) {
+  const text = fmtSalaryText(e.target.value)
+  e.target.value = text
+  form.salary = Number(text.replace(/,/g, '')) || 0
+}
 
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
@@ -79,6 +104,8 @@ async function run(request, open, message) {
   } catch (e) { toast.error(apiError(e)) } finally { busy.value = false }
 }
 function save() {
+  if (!isEmail(form.email)) return toast.error('รูปแบบอีเมลไม่ถูกต้อง: ' + EMAIL_HINT)
+  if (form.phone && !isPhone(form.phone)) return toast.error('รูปแบบเบอร์โทรไม่ถูกต้อง: ' + PHONE_HINT)
   const { password, ...data } = form
   const u = selected.value
   run(() => (u ? api.put(`/users/${u.id}`, data) : api.post('/users', { ...data, password })), formOpen, u ? 'บันทึกข้อมูลแล้ว' : 'เพิ่มพนักงานแล้ว')
@@ -145,17 +172,17 @@ async function activate(u) {
       <form id="employee-form" class="grid gap-3 sm:grid-cols-2" @submit.prevent="save">
         <div><label class="label">รหัสพนักงาน</label><input v-model="form.emp_code" class="input" required /></div>
         <div><label class="label">ชื่อ-นามสกุล</label><input v-model="form.name" class="input" required /></div>
-        <div><label class="label">อีเมล</label><input v-model="form.email" type="email" class="input" required autocomplete="off" /></div>
+        <div><label class="label">อีเมล</label><input v-model="form.email" type="email" class="input" required autocomplete="off" @input="form.email = cleanEmail(form.email)" inputmode="email" :pattern="EMAIL_PATTERN" :title="EMAIL_HINT" /></div>
         <div v-if="!selected"><label class="label">รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)</label><PasswordInput v-model="form.password" required minlength="6" autocomplete="new-password"  /></div>
         <div><label class="label">เพศ</label><select v-model="form.gender" class="input"><option value="M">ชาย</option><option value="F">หญิง</option></select></div>
         <div>
           <label class="label">สิทธิ์การใช้งาน</label>
           <select v-model="form.role" class="input" :disabled="isSelf(selected)"><option v-for="[k, label] in roleOptions" :key="k" :value="k">{{ label }}</option></select>
         </div>
-        <div><label class="label">แผนก</label><input v-model="form.department" class="input" /></div>
+        <div><label class="label">แผนก</label><select v-model="form.department" class="input"><option value="" disabled>เลือกแผนก</option><option v-for="d in departmentOptions" :key="d" :value="d">{{ d }}</option></select></div>
         <div><label class="label">ตำแหน่ง</label><input v-model="form.position" class="input" /></div>
-        <div><label class="label">เงินเดือน (บาท)</label><input v-model.number="form.salary" type="number" min="0" step="0.01" class="input" required /></div>
-        <div><label class="label">เบอร์โทร</label><input v-model="form.phone" type="tel" class="input" /></div>
+        <div><label class="label">เงินเดือน (บาท)</label><input :value="salaryText" @input="onSalaryInput" type="text" inputmode="decimal" autocomplete="off" pattern="[0-9,]+(\.[0-9]{1,2})?" class="input" required /></div>
+        <div><label class="label">เบอร์โทร</label><input v-model="form.phone" type="tel" class="input" placeholder="0812345678" inputmode="numeric" maxlength="10" :pattern="PHONE_PATTERN" :title="PHONE_HINT" @input="form.phone = cleanPhone(form.phone)" /></div>
         <div><label class="label">วันเกิด</label><DateInput v-model="form.birthdate" clearable /></div>
         <div><label class="label">วันเริ่มงาน</label><DateInput v-model="form.start_date" clearable /></div>
         <div class="sm:col-span-2"><label class="label">ที่อยู่</label><textarea v-model="form.address" rows="2" class="input" /></div>
