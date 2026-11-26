@@ -1,4 +1,4 @@
-# TimeMine — Frontend
+# TimeMint — Frontend
 
 Nuxt 3 (JavaScript) + Tailwind CSS + axios + Pinia + VueUse.
 

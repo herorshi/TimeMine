@@ -1,4 +1,4 @@
-# TimeMine
+# TimeMint
 
 | Folder      | Stack |
 |-------------|-------|

@@ -1,4 +1,4 @@
-# TimeMine — Backend
+# TimeMint — Backend
 
 Node.js + Express 5 + SQLite (better-sqlite3).
 
