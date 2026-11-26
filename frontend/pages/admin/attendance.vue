@@ -124,7 +124,7 @@ async function reject(reason) {
                 <p class="font-semibold">{{ r.name }}</p>
                 <p class="text-xs text-slate-500">{{ r.emp_code }} · {{ r.department || '-' }}</p>
               </div>
-              <StatusBadge v-if="r.late_minutes > 0" color="amber" :label="`สาย ${fmtMinutes(r.late_minutes)}`" />
+              <LateBadge v-if="r.late_minutes > 0" :minutes="r.late_minutes" />
             </div>
             <p class="mt-2 text-sm text-slate-600">{{ fmtDate(r.date) }} · เข้า {{ fmtTime(r.check_in_at) }}</p>
             <p v-if="r.note" class="mt-1 break-words text-sm text-slate-500">หมายเหตุ: {{ r.note }}</p>
@@ -157,7 +157,7 @@ async function reject(reason) {
         </div>
         <DataTable :columns="columns" :rows="rows" row-key="id" :loading="listLoading" empty-text="ไม่พบรายการ">
           <template #cell-name="{ row }"><p class="font-medium">{{ row.name }}</p><p class="text-xs text-slate-400">{{ row.emp_code }}</p></template>
-          <template #cell-late_minutes="{ row }"><StatusBadge v-if="row.late_minutes > 0" color="amber" :label="lateText(row)" /><span v-else>-</span></template>
+          <template #cell-late_minutes="{ row }"><LateBadge :minutes="row.late_minutes" /></template>
           <template #cell-status="{ row }"><StatusBadge :status="row.status" /></template>
           <template #cell-reject_reason="{ row }"><span v-if="row.reject_reason" class="text-xs text-rose-600">{{ row.reject_reason }}</span><span v-else>-</span></template>
         </DataTable>
