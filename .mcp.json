@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "arp": {
+      "command": "sh",
+      "args": [
+        "-c",
+        "command -v arpctl >/dev/null 2>&1 && exec arpctl mcp; exit 0"
+      ]
+    }
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "[ -z \"$ARP_HEADER\" ] || arpctl session steer --hook",
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "command": "! command -v arpctl >/dev/null 2>&1 || arpctl session end --hook >/dev/null 2>&1 || true",
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "command": "! command -v arpctl >/dev/null 2>&1 || arpctl session start --brief --hook 2>/dev/null || true",
+            "type": "command"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "! command -v arpctl >/dev/null 2>&1 || arpctl session guard --hook",
+            "type": "command"
+          }
+        ]
+      }
+    ]
+  }
+}

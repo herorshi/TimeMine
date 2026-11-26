@@ -1,0 +1,32 @@
+# .arp/arp.yaml: written by `arpctl init --profile web-app`. Repo-owned: edit freely.
+# Every key is documented in the arp README (".arp/arp.yaml" section).
+
+repo: auto        # owner/name from `git remote get-url origin`
+# board: {owner: <org>, number: <n>}   # opt in to mirroring that GitHub Project (D4)
+worktrees: auto   # ../<repo>-wt
+ordering: milestone-first   # one milestone closes before the next starts
+
+# The commands a merge runs on the merged tree.
+checks:
+  backend: "cd backend && npm ci && node -e \"import('./src/app.js').then(()=>console.log('backend ok'))\""
+  frontend: "cd frontend && npm ci && npm run build"
+
+verify:
+  backend_glob: "backend/**"
+  frontend_glob: "frontend/**"
+
+limits:
+  heavy_max: 2
+
+gates:
+  merge: auto
+  merge_safety: ask
+
+# Planned lots: each item merges into lot/<name> on its own tests (TDD only);
+# `arpctl lot close` runs the checks once for the whole lot. `train` is the old
+# per-item merge to main.
+lots:
+  mode: branch
+
+# Files two workers must never hold at once (a registry, a router, a lockfile).
+hotspots: ["frontend/package-lock.json", "backend/package-lock.json"]
