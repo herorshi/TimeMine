@@ -3,6 +3,7 @@ import { apiError } from '~/utils/format'
 definePageMeta({ layout: 'blank' })
 const auth = useAuthStore()
 const toast = useToast()
+const route = useRoute()
 const form = reactive({ email: '', password: '' })
 const busy = ref(false)
 const demo = [
@@ -28,6 +29,9 @@ async function submit() {
         <div class="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-600 text-2xl text-white shadow-lg">⏱</div>
         <h1 class="text-2xl font-bold">TimeMint</h1>
         <p class="text-sm text-slate-500">ระบบลงเวลาและบริหารบุคคล</p>
+      </div>
+      <div v-if="route.query.expired" role="alert" class="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่
       </div>
       <form class="card space-y-4" @submit.prevent="submit">
         <div><label class="label">อีเมล</label><input v-model="form.email" type="email" class="input" required autocomplete="username" /></div>

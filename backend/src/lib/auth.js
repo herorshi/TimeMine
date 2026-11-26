@@ -1,10 +1,19 @@
+import crypto from 'node:crypto'
 import jwt from 'jsonwebtoken'
 import { db } from '../db/index.js'
 import { httpError } from './http.js'
 import { effectivePermissions } from './permissions.js'
+import { isProduction } from './security.js'
 
 const SECRET = process.env.JWT_SECRET || 'dev-only-change-me'
-export const signToken = (user) => jwt.sign({ sub: user.id, role: user.role }, SECRET, { expiresIn: '7d' })
+if (isProduction && (process.env.JWT_SECRET || '').length < 32)
+  throw new Error('JWT_SECRET must be set to at least 32 characters in production')
+const EXPIRES_IN = process.env.JWT_EXPIRES_IN || '8h'
+
+/** password version: changes whenever the password hash changes (hashed: the bcrypt prefix itself is constant) */
+const pwv = (user) => crypto.createHash('sha256').update(user.password_hash).digest('hex').slice(0, 16)
+export const signToken = (user) =>
+  jwt.sign({ sub: user.id, role: user.role, pwv: pwv(user) }, SECRET, { algorithm: 'HS256', expiresIn: EXPIRES_IN })
 
 /** safe user shape for API responses */
 export async function publicUser(u) {
@@ -17,9 +26,9 @@ export async function publicUser(u) {
 export async function auth(req, _res, next) {
   const token = (req.headers.authorization || '').replace(/^Bearer /, '')
   try {
-    const { sub } = jwt.verify(token, SECRET)
-    const user = await db.prepare('SELECT * FROM users WHERE id = ? AND active = 1').get(sub)
-    if (!user) throw new Error()
+    const claims = jwt.verify(token, SECRET, { algorithms: ['HS256'] })
+    const user = await db.prepare('SELECT * FROM users WHERE id = ? AND active = 1').get(claims.sub)
+    if (!user || !claims.exp || claims.pwv !== pwv(user)) throw new Error()
     req.user = user
     next()
   } catch {

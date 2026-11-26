@@ -3,6 +3,15 @@ import { defineStore } from 'pinia'
 const KEY = 'timemint.token'
 const read = () => { try { return localStorage.getItem(KEY) } catch { return null } }
 
+/** true when the JWT's exp has passed, or the token cannot be decoded */
+export function isTokenExpired(token) {
+  try {
+    const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    const { exp } = JSON.parse(atob(b64.padEnd(Math.ceil(b64.length / 4) * 4, '=')))
+    return !exp || exp * 1000 <= Date.now()
+  } catch { return true }
+}
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({ token: read(), user: null }),
   getters: {
@@ -24,6 +33,17 @@ export const useAuthStore = defineStore('auth', {
       const { data } = await useApi().get('/auth/me')
       this.user = data
       return data
+    },
+    /** end a dead session once (parallel 401s: only the first call toasts). The caller navigates. */
+    expire() {
+      if (!this.token) return false
+      this.logout()
+      useToast().error('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่')
+      return true
+    },
+    /** true if the stored token had expired and the session was just ended */
+    checkExpiry() {
+      return !!this.token && isTokenExpired(this.token) && this.expire()
     },
     logout() {
       this.token = null
