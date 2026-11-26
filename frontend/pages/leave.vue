@@ -145,11 +145,11 @@ const columns = [
         <div class="grid gap-4 sm:grid-cols-2">
           <div>
             <label class="label">วันเริ่มลา</label>
-            <input v-model="form.start_date" type="date" class="input" required>
+            <DateInput v-model="form.start_date" required />
           </div>
           <div>
             <label class="label">วันสิ้นสุด</label>
-            <input v-model="form.end_date" type="date" class="input" :min="form.start_date" required>
+            <DateInput v-model="form.end_date" :min="form.start_date" required />
           </div>
         </div>
         <p class="text-sm text-slate-600">จำนวนวันทำงาน: <b>{{ days }}</b> วัน</p>

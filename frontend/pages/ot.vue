@@ -119,11 +119,11 @@ const columns = [
       <form id="ot-form" class="space-y-3" @submit.prevent="submit">
         <div>
           <label class="label">วันที่</label>
-          <input v-model="form.date" type="date" class="input" required>
+          <DateInput v-model="form.date" required />
         </div>
         <div class="grid grid-cols-2 gap-3">
-          <div><label class="label">เวลาเริ่ม</label><input v-model="form.start_time" type="time" class="input" required></div>
-          <div><label class="label">เวลาสิ้นสุด</label><input v-model="form.end_time" type="time" class="input" required></div>
+          <div><label class="label">เวลาเริ่ม</label><DateInput v-model="form.start_time" type="time" required /></div>
+          <div><label class="label">เวลาสิ้นสุด</label><DateInput v-model="form.end_time" type="time" required /></div>
         </div>
         <p v-if="hours > 0" class="text-sm text-slate-600">รวม <b>{{ hours }}</b> ชั่วโมง</p>
         <p v-else class="text-sm text-rose-600">เวลาสิ้นสุดต้องอยู่หลังเวลาเริ่ม</p>
