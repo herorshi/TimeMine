@@ -10,6 +10,7 @@ export default defineNuxtConfig({
     public: { apiBase: 'http://localhost:4000/api' }, // NUXT_PUBLIC_API_BASE
   },
   app: {
+    pageTransition: { name: 'page', mode: 'out-in' },
     head: {
       title: 'TimeMint',
       htmlAttrs: { lang: 'th' },

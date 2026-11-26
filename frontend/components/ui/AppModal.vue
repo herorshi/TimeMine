@@ -9,9 +9,9 @@ onKeyStroke('Escape', close)
 
 <template>
   <Teleport to="body">
-    <Transition enter-from-class="opacity-0" leave-to-class="opacity-0" enter-active-class="transition duration-200" leave-active-class="transition duration-150">
+    <Transition name="modal">
       <div v-if="open" class="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/50 p-0 backdrop-blur-sm sm:items-center sm:p-4" @click.self="close">
-        <div class="flex max-h-[92vh] w-full flex-col rounded-t-2xl bg-white shadow-xl sm:rounded-2xl" :class="widths[size]">
+        <div class="modal-panel flex max-h-[92vh] w-full flex-col rounded-t-2xl bg-white shadow-xl sm:rounded-2xl" :class="widths[size]">
           <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
             <h3 class="text-base font-semibold text-slate-800">{{ title }}</h3>
             <button class="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600" aria-label="ปิด" @click="open = false">✕</button>

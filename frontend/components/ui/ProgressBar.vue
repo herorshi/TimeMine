@@ -12,7 +12,7 @@ const bar = { brand: 'bg-brand-500', amber: 'bg-amber-500', rose: 'bg-rose-500',
       <span v-if="showText" class="text-slate-500">{{ value }}{{ suffix }} / {{ max }}{{ suffix }}</span>
     </div>
     <div class="h-2.5 w-full overflow-hidden rounded-full bg-slate-100">
-      <div class="h-full rounded-full transition-all duration-700" :class="bar[color] || bar.brand" :style="{ width: pct + '%' }" />
+      <div class="progress-fill h-full w-full rounded-full" :class="bar[color] || bar.brand" :style="{ transform: `translateX(${pct - 100}%)` }" />
     </div>
   </div>
 </template>

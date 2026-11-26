@@ -8,7 +8,7 @@ const tones = { brand: 'bg-brand-50 text-brand-700', amber: 'bg-amber-50 text-am
     <div v-if="icon" class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-2xl" :class="tones[tone]">{{ icon }}</div>
     <div class="min-w-0">
       <p class="truncate text-xs font-medium text-slate-500">{{ label }}</p>
-      <p class="truncate text-xl font-bold text-slate-800">{{ value }}</p>
+      <p class="stat-value truncate text-xl font-bold text-slate-800">{{ value }}</p>
       <p v-if="hint" class="truncate text-xs text-slate-400">{{ hint }}</p>
     </div>
   </div>
