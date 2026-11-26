@@ -2,7 +2,8 @@
 // const faceapi = await load()  // lazy import + models (client only, loaded once)
 const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model/'
 
-const LOAD_TIMEOUT_MS = 20000
+// ~7 MB of models: slow mobile networks need more than a few seconds
+const LOAD_TIMEOUT_MS = 60000
 
 const loading = ref(false)
 const ready = ref(false)
