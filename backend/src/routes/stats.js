@@ -48,14 +48,17 @@ function overviewSheets({ year, months, totals, departments, top_late }) {
 }
 
 // GET /stats/overview?year=YYYY[&format=xlsx]
-router.get('/overview', requireRole('executive'), (req, res) => {
+router.get('/overview', requireRole('executive'), async (req, res) => {
   const today = toDateStr()
   const year = Number(req.query.year ?? today.slice(0, 4))
   if (!Number.isInteger(year) || year < 2000 || year > 2100) throw httpError(400, 'ปีไม่ถูกต้อง')
   const y = String(year)
-  const settings = getSettings()
-  const users = db.prepare('SELECT * FROM users WHERE active = 1').all()
-  const holidays = db.prepare('SELECT date FROM holidays WHERE substr(date,1,4) = ?').all(y).map((r) => r.date)
+  const [settings, users, holidayRows] = await Promise.all([
+    getSettings(),
+    db.prepare('SELECT * FROM users WHERE active = 1').all(),
+    db.prepare('SELECT date FROM holidays WHERE substr(date,1,4) = ?').all(y),
+  ])
+  const holidays = holidayRows.map((r) => r.date)
   const isWeekday = (d) => ![0, 6].includes(new Date(d + 'T00:00:00').getDay())
   const startedBy = (u, date) => !u.start_date || u.start_date <= date
   // working days in [from, to]: weekdays minus weekday holidays
@@ -70,8 +73,8 @@ router.get('/overview', requireRole('executive'), (req, res) => {
   }
   for (const u of users) deptOf(u.department).headcount++
 
-  const byMonth = (sql) => new Map(db.prepare(sql).all(y).map((r) => [r.m, r]))
-  const att = byMonth(`SELECT substr(date,1,7) m,
+  const byMonth = async (sql) => new Map((await db.prepare(sql).all(y)).map((r) => [r.m, r]))
+  const att = await byMonth(`SELECT substr(date,1,7) m,
       SUM(status != 'rejected') checkins,
       SUM(status != 'rejected' AND mode = 'office') office,
       SUM(status != 'rejected' AND mode = 'building') building,
@@ -81,15 +84,15 @@ router.get('/overview', requireRole('executive'), (req, res) => {
       SUM(mode = 'wfh' AND status = 'approved') wfh_approved,
       SUM(mode = 'wfh' AND status = 'rejected') wfh_rejected
     FROM attendance WHERE substr(date,1,4) = ? GROUP BY m`)
-  const issued = byMonth(`SELECT substr(issued_at,1,7) m, COUNT(*) n FROM warnings WHERE substr(issued_at,1,4) = ? GROUP BY m`)
-  const cancelled = byMonth(`SELECT substr(cancelled_at,1,7) m, COUNT(*) n FROM warnings
+  const issued = await byMonth(`SELECT substr(issued_at,1,7) m, COUNT(*) n FROM warnings WHERE substr(issued_at,1,4) = ? GROUP BY m`)
+  const cancelled = await byMonth(`SELECT substr(cancelled_at,1,7) m, COUNT(*) n FROM warnings
     WHERE status = 'cancelled' AND substr(cancelled_at,1,4) = ? GROUP BY m`)
 
   // attendance rate = check-ins of active staff / (staff × elapsed working days)
   const activeCheckins = db.prepare(`SELECT COUNT(*) n FROM attendance a JOIN users u ON u.id = a.user_id
     WHERE u.active = 1 AND a.status != 'rejected' AND a.date BETWEEN ? AND ?`)
   // days before the first attendance record ever (system not in use yet) are not expected
-  const since = db.prepare('SELECT MIN(date) d FROM attendance').get().d
+  const since = (await db.prepare('SELECT MIN(date) d FROM attendance').get()).d
   let attended = 0
   let expected = 0
 
@@ -101,8 +104,9 @@ router.get('/overview', requireRole('executive'), (req, res) => {
     const future = first > today
     const staff = future ? [] : users.filter((u) => startedBy(u, last))
     let base = 0, ot = 0, deduction = 0
-    for (const u of staff) {
-      const p = monthlyPay(u, month, settings)
+    const pays = await Promise.all(staff.map((u) => monthlyPay(u, month, settings)))
+    for (const [j, u] of staff.entries()) {
+      const p = pays[j]
       base += p.base; ot += p.ot; deduction += p.deduction
       deptOf(u.department).payroll += p.total
     }
@@ -110,7 +114,7 @@ router.get('/overview', requireRole('executive'), (req, res) => {
     if (!future && since) {
       // a day counts for a person only from their start date
       for (const u of staff) expected += workDays([first, since, u.start_date || first].sort().at(-1), to)
-      attended += activeCheckins.get(first, to).n
+      attended += (await activeCheckins.get(first, to)).n
     }
     const a = att.get(month) || {}
     months.push({
@@ -138,28 +142,28 @@ router.get('/overview', requireRole('executive'), (req, res) => {
   for (const k of ['base', 'ot', 'deduction', 'total']) totals.payroll[k] = round2(months.reduce((s, m) => s + m.payroll[k], 0))
   totals.attendance_rate = expected ? Math.min(100, Math.round((attended / expected) * 1000) / 10) : 0
 
-  const deptAtt = db.prepare(`SELECT u.department d, COUNT(*) checkins, SUM(a.late_minutes > 0) late_count, SUM(a.late_minutes) late_minutes
+  const deptAtt = await db.prepare(`SELECT u.department d, COUNT(*) checkins, SUM(a.late_minutes > 0) late_count, SUM(a.late_minutes) late_minutes
     FROM attendance a JOIN users u ON u.id = a.user_id
     WHERE a.status != 'rejected' AND substr(a.date,1,4) = ? GROUP BY u.department`).all(y)
   for (const r of deptAtt) {
     const d = deptOf(r.d)
     d.checkins += r.checkins; d.late_count += r.late_count; d.late_minutes += r.late_minutes
   }
-  const deptWarn = db.prepare(`SELECT u.department d, COUNT(*) n FROM warnings w JOIN users u ON u.id = w.user_id
+  const deptWarn = await db.prepare(`SELECT u.department d, COUNT(*) n FROM warnings w JOIN users u ON u.id = w.user_id
     WHERE w.status = 'active' AND substr(w.issued_at,1,4) = ? GROUP BY u.department`).all(y)
   for (const r of deptWarn) deptOf(r.d).warnings += r.n
 
-  const topLate = db.prepare(`SELECT u.id user_id, u.emp_code, u.name, u.department,
+  const topLate = await db.prepare(`SELECT u.id user_id, u.emp_code, u.name, u.department,
       COUNT(*) late_count, SUM(a.late_minutes) late_minutes
     FROM attendance a JOIN users u ON u.id = a.user_id
     WHERE a.status != 'rejected' AND a.late_minutes > 0 AND substr(a.date,1,4) = ?
     GROUP BY u.id ORDER BY late_count DESC, late_minutes DESC LIMIT 10`).all(y)
 
   // every year from the earliest record to the current year, at least the last 3 (floor 2000 = what ?year accepts)
-  const firstDate = db.prepare(`SELECT MIN(d) d FROM (
+  const firstDate = (await db.prepare(`SELECT MIN(d) d FROM (
     SELECT MIN(date) d FROM attendance
     UNION ALL SELECT MIN(date) FROM ot_requests
-    UNION ALL SELECT MIN(start_date) FROM leaves)`).get().d
+    UNION ALL SELECT MIN(start_date) FROM leaves)`).get()).d
   const thisYear = Number(today.slice(0, 4))
   const minYear = Math.max(2000, Math.min(thisYear - 2, Number(firstDate?.slice(0, 4) || thisYear)))
   const years = Array.from({ length: thisYear - minYear + 1 }, (_, i) => thisYear - i)
@@ -173,7 +177,7 @@ router.get('/overview', requireRole('executive'), (req, res) => {
     departments: [...deptMap.values()].map((d) => ({ ...d, payroll: round2(d.payroll) })),
     top_late: topLate,
   }
-  if (req.query.format === 'xlsx') return sendXlsx(res, `overview_${year}`, overviewSheets(data))
+  if (req.query.format === 'xlsx') return await sendXlsx(res, `overview_${year}`, overviewSheets(data))
   res.json(data)
 })
 
