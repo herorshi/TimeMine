@@ -1,4 +1,5 @@
 <script setup>
+import { STATUS } from '~/utils/constants'
 import { fmtDate, fmtMoney, fmtNumber, apiError } from '~/utils/format'
 definePageMeta({ roles: ['admin'] })
 
@@ -67,6 +68,18 @@ const reject = (reason) => act('reject', { reason }, 'ไม่อนุมั�
 const approveMessage = computed(() => (target.value
   ? `อนุมัติ OT ของ ${target.value.user_name} วันที่ ${fmtDate(target.value.date)} จำนวน ${fmtNumber(target.value.hours)} ชม. ยอดเงินโดยประมาณ ${fmtMoney(target.value.estimated_amount)}`
   : ''))
+
+const statusOptions = tabs.filter((t) => t.key).map((t) => ({ value: t.key, label: STATUS[t.key]?.label || t.label }))
+const amountText = (r) => (r.status === 'rejected' ? '-' : fmtMoney(r.estimated_amount))
+const columns = [
+  { key: 'user_name', label: 'พนักงาน', text: (r) => `${r.user_name} ${r.emp_code || ''}` },
+  { key: 'department', label: 'แผนก', filter: 'select' },
+  { key: 'date', label: 'วันที่ / เวลา', filter: 'date', text: (r) => `${fmtDate(r.date)} ${r.start_time} - ${r.end_time}`, class: 'whitespace-nowrap' },
+  { key: 'hours', label: 'ชม.', text: (r) => fmtNumber(r.hours) },
+  { key: 'reason', label: 'เหตุผล', class: 'min-w-[9rem] break-words' },
+  { key: 'estimated_amount', label: 'ยอดเงิน', value: (r) => (r.status === 'rejected' ? null : r.estimated_amount), text: amountText, class: 'whitespace-nowrap' },
+  { key: 'status', label: 'สถานะ', filter: 'select', options: statusOptions, text: (r) => STATUS[r.status]?.label || r.status },
+]
 </script>
 
 <template>
@@ -79,46 +92,35 @@ const approveMessage = computed(() => (target.value
       <input v-model="month" type="month" class="input sm:w-44" aria-label="เดือน">
     </div>
 
-    <LoadingBlock v-if="loading" />
-    <div v-else-if="!filtered.length" class="card"><EmptyState icon="💰" text="ไม่มีคำขอ OT" /></div>
-    <template v-else>
-      <p class="mb-2 text-sm text-slate-500">{{ filtered.length }} รายการ · {{ fmtNumber(totalHours) }} ชม. · {{ fmtMoney(totalAmount) }}<span v-if="!status"> (ไม่รวมที่ไม่อนุมัติ)</span></p>
-      <div class="table-wrap">
-        <table class="table [&_td]:px-2 [&_th]:px-2">
-          <thead>
-            <tr><th class="sticky left-0 z-[1]">พนักงาน</th><th>วันที่ / เวลา</th><th>ชม.</th><th>เหตุผล</th><th>ยอดเงิน</th><th>สถานะ</th><th /></tr>
-          </thead>
-          <tbody>
-            <tr v-for="r in filtered" :key="r.id">
-              <td class="sticky left-0 z-[1] max-w-[11rem] bg-white">
-                <p class="font-medium text-slate-800">{{ r.user_name }}</p>
-                <p class="text-xs text-slate-400">{{ r.emp_code }}<span v-if="r.department"> · {{ r.department }}</span></p>
-              </td>
-              <td class="whitespace-nowrap">
-                <p>{{ fmtDate(r.date) }}</p>
-                <p class="text-xs text-slate-500">{{ r.start_time }} - {{ r.end_time }}</p>
-              </td>
-              <td>{{ fmtNumber(r.hours) }}</td>
-              <td class="min-w-[9rem] break-words">{{ r.reason }}</td>
-              <td class="whitespace-nowrap">
-                <template v-if="r.status === 'rejected'">-</template>
-                <template v-else>{{ fmtMoney(r.estimated_amount) }}<span v-if="r.status === 'pending'" class="block text-xs text-slate-400">(ประมาณ)</span></template>
-              </td>
-              <td>
-                <StatusBadge :status="r.status" />
-                <p v-if="r.reject_reason" class="mt-1 min-w-[7rem] text-xs text-rose-600">เหตุผล: {{ r.reject_reason }}</p>
-              </td>
-              <td>
-                <div v-if="r.status === 'pending'" class="flex gap-2">
-                  <button class="btn-primary btn-sm whitespace-nowrap" @click="askApprove(r)">อนุมัติ</button>
-                  <button class="btn-danger btn-sm whitespace-nowrap" @click="askReject(r)">ไม่อนุมัติ</button>
-                </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </template>
+    <p v-if="!loading && filtered.length" class="mb-2 text-sm text-slate-500">{{ filtered.length }} รายการ · {{ fmtNumber(totalHours) }} ชม. · {{ fmtMoney(totalAmount) }}<span v-if="!status"> (ไม่รวมที่ไม่อนุมัติ)</span></p>
+    <DataTable
+      class="[&_td]:px-2 [&_th]:px-2 [&_td:first-child]:sticky [&_td:first-child]:left-0 [&_td:first-child]:z-[1] [&_td:first-child]:bg-white [&_th:first-child]:sticky [&_th:first-child]:left-0 [&_th:first-child]:z-[1] [&_thead_input]:min-w-[6rem] [&_thead_input[type=date]]:min-w-[8.5rem] [&_thead_select]:min-w-[6.5rem]"
+      :columns="columns" :rows="filtered" :loading="loading" empty-text="ไม่มีคำขอ OT"
+    >
+      <template #cell-user_name="{ row }">
+        <div class="max-w-[11rem]">
+          <p class="font-medium text-slate-800">{{ row.user_name }}</p>
+          <p class="text-xs text-slate-400">{{ row.emp_code }}</p>
+        </div>
+      </template>
+      <template #cell-date="{ row }">
+        <p>{{ fmtDate(row.date) }}</p>
+        <p class="text-xs text-slate-500">{{ row.start_time }} - {{ row.end_time }}</p>
+      </template>
+      <template #cell-estimated_amount="{ row }">
+        {{ amountText(row) }}<span v-if="row.status === 'pending'" class="block text-xs text-slate-400">(ประมาณ)</span>
+      </template>
+      <template #cell-status="{ row }">
+        <StatusBadge :status="row.status" />
+        <p v-if="row.reject_reason" class="mt-1 min-w-[7rem] text-xs text-rose-600">เหตุผล: {{ row.reject_reason }}</p>
+      </template>
+      <template #actions="{ row }">
+        <div v-if="row.status === 'pending'" class="flex justify-end gap-2">
+          <button class="btn-primary btn-sm whitespace-nowrap" @click="askApprove(row)">อนุมัติ</button>
+          <button class="btn-danger btn-sm whitespace-nowrap" @click="askReject(row)">ไม่อนุมัติ</button>
+        </div>
+      </template>
+    </DataTable>
 
     <ConfirmModal v-model="approveOpen" title="อนุมัติ OT" :message="approveMessage" confirm-text="อนุมัติ" :loading="busy" @confirm="approve" />
     <ReasonModal v-model="rejectOpen" title="ไม่อนุมัติ OT" confirm-text="ไม่อนุมัติ" :loading="busy" @confirm="reject" />
