@@ -1,6 +1,6 @@
 <script setup>
 import { ROLE_LABELS } from '~/utils/constants'
-import { fmtMoney, apiError } from '~/utils/format'
+import { fmtDate, fmtMoney, apiError } from '~/utils/format'
 definePageMeta({ roles: ['admin'] })
 
 const api = useApi()
@@ -15,6 +15,9 @@ const formOpen = ref(false)
 const resetOpen = ref(false)
 const offOpen = ref(false)
 const delOpen = ref(false)
+const enrollOpen = ref(false)
+const faceResetOpen = ref(false)
+const photoOpen = ref(false)
 const selected = ref(null) // null = creating
 const newPassword = ref('')
 const blank = { emp_code: '', email: '', password: '', name: '', gender: 'M', role: 'employee', department: '', position: '', phone: '', address: '', birthdate: '', start_date: '', salary: 0 }
@@ -59,6 +62,11 @@ function openForm(u = null) {
 function openReset(u) { selected.value = u; newPassword.value = ''; resetOpen.value = true }
 function openOff(u) { selected.value = u; offOpen.value = true }
 function openDelete(u) { selected.value = u; delOpen.value = true }
+function openEnroll(u) { selected.value = u; enrollOpen.value = true }
+function openFaceReset(u) { selected.value = u; faceResetOpen.value = true }
+function openPhoto(u) { selected.value = u; photoOpen.value = true }
+// also reload on close, so the list is fresh even if the scanner reports nothing
+watch(enrollOpen, (open) => { if (!open) load() })
 
 /** run a request, then close the modal, toast and reload */
 async function run(request, open, message) {
@@ -77,6 +85,7 @@ function save() {
 }
 const resetPassword = () => run(() => api.post(`/users/${selected.value.id}/reset-password`, { password: newPassword.value }), resetOpen, 'ตั้งรหัสผ่านใหม่แล้ว')
 const deactivate = () => run(() => api.delete(`/users/${selected.value.id}`), offOpen, 'ปิดการใช้งานแล้ว')
+const resetFace = () => run(() => api.delete(`/face/enroll/${selected.value.id}`), faceResetOpen, 'รีเซ็ตใบหน้าแล้ว')
 const remove = () => run(() => api.delete(`/users/${selected.value.id}/permanent`), delOpen, 'ลบบัญชีแล้ว')
 async function activate(u) {
   try {
@@ -90,6 +99,7 @@ async function activate(u) {
 <template>
   <div>
     <PageHeader title="จัดการพนักงาน">
+      <NuxtLink v-if="auth.can('employees.manage')" to="/admin/faces" class="btn-secondary">สแกนใบหน้าใหม่</NuxtLink>
       <button class="btn-primary" @click="openForm()">+ เพิ่มพนักงาน</button>
     </PageHeader>
 
@@ -107,12 +117,22 @@ async function activate(u) {
         <StatusBadge :color="u.active ? 'emerald' : 'rose'" :label="activeLabels[yesNo(u.active)]" />
       </template>
       <template #cell-face_enrolled="{ row: u }">
-        <StatusBadge :color="u.face_enrolled ? 'emerald' : 'slate'" :label="faceLabels[yesNo(u.face_enrolled)]" />
+        <div class="flex items-center gap-2">
+          <button v-if="u.face_enrolled && u.face_photo_url" type="button" class="shrink-0" :aria-label="`ดูรูปลงทะเบียนใบหน้าของ ${u.name}`" @click="openPhoto(u)">
+            <img :src="u.face_photo_url" alt="" class="h-10 w-10 rounded-lg border border-slate-200 object-cover" />
+          </button>
+          <div class="whitespace-nowrap">
+            <StatusBadge :color="u.face_enrolled ? 'emerald' : 'slate'" :label="faceLabels[yesNo(u.face_enrolled)]" />
+            <p v-if="u.face_enrolled && u.face_enrolled_at" class="mt-0.5 text-xs text-slate-400">{{ fmtDate(u.face_enrolled_at) }}</p>
+          </div>
+        </div>
       </template>
       <template #actions="{ row: u }">
         <div v-if="canManage(u)" class="ml-auto flex w-48 flex-wrap justify-end gap-1.5">
           <button class="btn-secondary btn-sm" @click="openForm(u)">แก้ไข</button>
           <button class="btn-secondary btn-sm" @click="openReset(u)">รีเซ็ตรหัส</button>
+          <button v-if="u.face_enrolled" class="btn-secondary btn-sm" @click="openFaceReset(u)">รีเซ็ตใบหน้า</button>
+          <button v-else-if="u.active" class="btn-primary btn-sm" @click="openEnroll(u)">สแกนลงทะเบียนใบหน้า</button>
           <button v-if="u.active && !isSelf(u)" class="btn-secondary btn-sm" @click="openOff(u)">ปิดใช้งาน</button>
           <button v-else-if="!u.active" class="btn-secondary btn-sm" @click="activate(u)">เปิดใช้งาน</button>
           <button v-if="!isSelf(u)" class="btn-danger btn-sm" @click="openDelete(u)">ลบ</button>
@@ -158,6 +178,16 @@ async function activate(u) {
       </template>
     </AppModal>
 
+    <AppModal v-model="enrollOpen" :title="`สแกนลงทะเบียนใบหน้า: ${selected?.name || ''}`">
+      <FaceEnroll v-if="enrollOpen" :user-id="selected.id" :user-name="selected.name" @changed="load" />
+    </AppModal>
+
+    <AppModal v-model="photoOpen" title="รูปหลักฐานการลงทะเบียนใบหน้า">
+      <img :src="selected?.face_photo_url" :alt="`รูปใบหน้าของ ${selected?.name}`" class="mx-auto max-h-[60vh] rounded-xl" />
+      <p class="mt-3 text-center text-sm text-slate-600">{{ selected?.name }} · ลงทะเบียน {{ fmtDate(selected?.face_enrolled_at) }}</p>
+    </AppModal>
+
+    <ConfirmModal v-model="faceResetOpen" title="รีเซ็ตใบหน้า" :message="`รีเซ็ตข้อมูลใบหน้าของ ${selected?.name}? ต้องสแกนลงทะเบียนใหม่ก่อนจึงจะใช้สแกนใบหน้าได้`" confirm-text="รีเซ็ต" danger :loading="busy" @confirm="resetFace" />
     <ConfirmModal v-model="offOpen" title="ปิดการใช้งานพนักงาน" :message="`ปิดการใช้งานบัญชีของ ${selected?.name}? พนักงานจะเข้าสู่ระบบไม่ได้`" confirm-text="ปิดใช้งาน" danger :loading="busy" @confirm="deactivate" />
     <ConfirmModal v-model="delOpen" title="ลบบัญชีถาวร" :message="`ลบบัญชีของ ${selected?.name} และข้อมูลการเข้างาน การลา OT และใบเตือนทั้งหมดอย่างถาวร? ไม่สามารถกู้คืนได้`" confirm-text="ลบถาวร" danger :loading="busy" @confirm="remove" />
   </div>

@@ -1,6 +1,6 @@
 <script setup>
 import { CHECKIN_MODES, STATUS } from '~/utils/constants'
-import { fmtDate, fmtTime, fmtMinutes, todayStr, apiError } from '~/utils/format'
+import { fmtDate, fmtDateTime, fmtTime, fmtMinutes, todayStr, apiError } from '~/utils/format'
 
 definePageMeta({ roles: ['admin'] })
 
@@ -16,6 +16,9 @@ const listLoading = ref(false)
 const busyId = ref(null)
 const rejectOpen = ref(false)
 const rejecting = ref(null)
+const evidenceOpen = ref(false)
+const evidence = ref(null)
+const openEvidence = (r) => { evidence.value = r; evidenceOpen.value = true }
 
 const overview = computed(() => {
   const list = todayRows.value
@@ -157,12 +160,33 @@ async function reject(reason) {
         </div>
         <DataTable :columns="columns" :rows="rows" row-key="id" :loading="listLoading" empty-text="ไม่พบรายการ">
           <template #cell-name="{ row }"><p class="font-medium">{{ row.name }}</p><p class="text-xs text-slate-400">{{ row.emp_code }}</p></template>
+          <template #cell-mode="{ row }">
+            <span class="inline-flex items-center gap-1.5">
+              {{ CHECKIN_MODES[row.mode]?.icon }} {{ CHECKIN_MODES[row.mode]?.label || row.mode }}
+              <button v-if="row.mode === 'building'" type="button" class="btn-secondary btn-sm" aria-label="ดูรูปหลักฐานการลงเวลา" title="ดูรูปหลักฐาน" @click="openEvidence(row)">📷</button>
+            </span>
+          </template>
           <template #cell-late_minutes="{ row }"><LateBadge :minutes="row.late_minutes" /></template>
           <template #cell-status="{ row }"><StatusBadge :status="row.status" /></template>
           <template #cell-reject_reason="{ row }"><span v-if="row.reject_reason" class="text-xs text-rose-600">{{ row.reject_reason }}</span><span v-else>-</span></template>
         </DataTable>
       </div>
     </div>
+
+    <AppModal v-model="evidenceOpen" title="รูปหลักฐานการลงเวลาที่ตึก">
+      <template v-if="evidence">
+        <img v-if="evidence.face_photo_url" :src="evidence.face_photo_url" :alt="`รูปหลักฐานของ ${evidence.name}`" class="mx-auto max-h-[50vh] rounded-xl" />
+        <EmptyState v-else icon="📷" text="ไม่มีรูปหลักฐานสำหรับรายการนี้" />
+        <dl class="mt-4 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+          <dt class="text-slate-500">ระบุตัวตนได้</dt>
+          <dd class="break-words font-medium">{{ evidence.face_verified ? `${evidence.name} (${evidence.emp_code})` : '-' }}</dd>
+          <dt class="text-slate-500">ระยะห่างใบหน้า</dt>
+          <dd>{{ evidence.face_distance != null ? Number(evidence.face_distance).toFixed(3) : '-' }}</dd>
+          <dt class="text-slate-500">เวลาลงเข้า</dt>
+          <dd>{{ fmtDateTime(evidence.check_in_at) }}</dd>
+        </dl>
+      </template>
+    </AppModal>
 
     <ReasonModal v-model="rejectOpen" title="ไม่อนุมัติ WFH" :loading="busyId !== null" @confirm="reject" />
   </div>
