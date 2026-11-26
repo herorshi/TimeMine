@@ -27,8 +27,8 @@ const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex')
 const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`)
 
 /** the unused, unexpired reset row of an active user, or 400 */
-function findReset(token) {
-  const row = typeof token === 'string' && token && db.prepare(`
+async function findReset(token) {
+  const row = typeof token === 'string' && token && await db.prepare(`
     SELECT r.id, r.user_id, u.email FROM password_resets r JOIN users u ON u.id = r.user_id AND u.active = 1
     WHERE r.token_hash = ? AND r.used_at IS NULL AND r.expires_at > ?`).get(sha256(token), toDateTimeStr())
   if (!row) throw httpError(400, INVALID)
@@ -61,20 +61,24 @@ function resetMail(user, link, expiresAt) {
 
 router.post('/forgot', async (req, res) => {
   const email = String(req.body?.email || '').trim().toLowerCase()
-  const user = db.prepare('SELECT id, email, name FROM users WHERE lower(email) = ? AND active = 1').get(email)
+  const user = await db.prepare('SELECT id, email, name FROM users WHERE lower(email) = ? AND active = 1').get(email)
   const now = Date.now()
   // unknown email and rate-limited requests get the same answer as success (no user enumeration)
-  if (!user || db.prepare('SELECT 1 FROM password_resets WHERE user_id = ? AND created_at > ?')
-    .get(user.id, toDateTimeStr(new Date(now - COOLDOWN_SEC * 1000)))) return res.json({ ok: true })
+  if (!user) return res.json({ ok: true })
 
   const token = crypto.randomBytes(32).toString('hex')
   const createdAt = toDateTimeStr(new Date(now))
   const expiresAt = toDateTimeStr(new Date(now + TTL_MIN * 60000))
-  db.transaction(() => {
-    db.prepare('UPDATE password_resets SET used_at = ? WHERE user_id = ? AND used_at IS NULL').run(createdAt, user.id)
-    db.prepare('INSERT INTO password_resets (user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?)')
+  // cooldown check and insert share one write tx, so concurrent requests can't both send
+  const created = await db.transaction(async () => {
+    if (await db.prepare('SELECT 1 FROM password_resets WHERE user_id = ? AND created_at > ?')
+      .get(user.id, toDateTimeStr(new Date(now - COOLDOWN_SEC * 1000)))) return false
+    await db.prepare('UPDATE password_resets SET used_at = ? WHERE user_id = ? AND used_at IS NULL').run(createdAt, user.id)
+    await db.prepare('INSERT INTO password_resets (user_id, token_hash, expires_at, created_at) VALUES (?, ?, ?, ?)')
       .run(user.id, sha256(token), expiresAt, createdAt)
+    return true
   })()
+  if (!created) return res.json({ ok: true })
 
   const sending = sendMail(resetMail(user, `${APP_URL}/reset-password?token=${token}`, expiresAt))
     .catch((err) => { console.error(`[mail] send failed: ${err.code || err.message}`); return {} })
@@ -84,20 +88,22 @@ router.post('/forgot', async (req, res) => {
   res.json({ ok: true, ...(previewUrl && { preview_url: previewUrl }) })
 })
 
-router.get('/verify', (req, res) => {
+router.get('/verify', async (req, res) => {
   const { token } = req.query
   req.originalUrl = `${req.baseUrl}/verify` // keeps the token out of the request log (morgan)
-  res.json({ valid: true, email_masked: maskEmail(findReset(token).email) })
+  res.json({ valid: true, email_masked: maskEmail((await findReset(token)).email) })
 })
 
-router.post('/reset', (req, res) => {
+router.post('/reset', async (req, res) => {
   const { token, password } = req.body || {}
-  const row = findReset(token)
+  const row = await findReset(token)
   if (typeof password !== 'string' || password.length < 6) throw httpError(400, 'รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัวอักษร')
   const hash = bcrypt.hashSync(password, 10)
-  db.transaction(() => {
-    db.prepare('UPDATE password_resets SET used_at = ? WHERE id = ?').run(toDateTimeStr(), row.id)
-    db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, row.user_id)
+  await db.transaction(async () => {
+    // claim the token inside the tx: a concurrent reset may have used it since findReset
+    const { changes } = await db.prepare('UPDATE password_resets SET used_at = ? WHERE id = ? AND used_at IS NULL').run(toDateTimeStr(), row.id)
+    if (!changes) throw httpError(400, INVALID)
+    await db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run(hash, row.user_id)
   })()
   res.json({ ok: true })
 })
