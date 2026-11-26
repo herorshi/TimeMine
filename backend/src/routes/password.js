@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import { db } from '../db/index.js'
 import { httpError } from '../lib/http.js'
 import { toDateTimeStr } from '../lib/time.js'
-import { APP_URL, sendMail, usingEthereal } from '../lib/mailer.js'
+import { APP_URL, sendMail } from '../lib/mailer.js'
 
 // Public routes (no auth): forgot / reset password.
 db.exec(`
@@ -80,11 +80,10 @@ router.post('/forgot', async (req, res) => {
   })()
   if (!created) return res.json({ ok: true })
 
-  const sending = sendMail(resetMail(user, `${APP_URL}/reset-password?token=${token}`, expiresAt))
+  // always wait for the send: on Vercel the function is frozen once the response is sent,
+  // so a send left running in the background never leaves the server
+  const { previewUrl } = await sendMail(resetMail(user, `${APP_URL}/reset-password?token=${token}`, expiresAt))
     .catch((err) => { console.error(`[mail] send failed: ${err.code || err.message}`); return {} })
-  // real SMTP: don't wait for delivery; the link is already stored
-  if (!usingEthereal()) return res.json({ ok: true })
-  const { previewUrl } = await sending
   res.json({ ok: true, ...(previewUrl && { preview_url: previewUrl }) })
 })
 
