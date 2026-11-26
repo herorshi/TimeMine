@@ -98,23 +98,23 @@ onMounted(load)
         <span class="text-2xl">→</span>
       </NuxtLink>
 
-      <div v-if="pendingCards.length" class="grid gap-4 sm:grid-cols-3">
-        <NuxtLink v-for="c in pendingCards" :key="c.to" :to="c.to" class="block rounded-2xl transition hover:-translate-y-0.5 hover:shadow-md">
+      <div v-if="pendingCards.length" class="grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <NuxtLink v-for="c in pendingCards" :key="c.to" :to="c.to" class="block min-w-0 rounded-2xl transition hover:-translate-y-0.5 hover:shadow-md">
           <StatCard :label="c.label" :value="`${fmtNumber(c.count)} รายการ`" :icon="c.icon" :tone="c.count ? 'amber' : 'slate'" />
         </NuxtLink>
       </div>
 
-      <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="มาสายเดือนนี้" :value="`${fmtNumber(data.late.month_count)} ครั้ง`" :hint="`รวม ${fmtMinutes(data.late.month_minutes)}`" icon="⏱" :tone="data.late.month_count ? 'amber' : 'brand'" />
         <StatCard label="มาสายสะสมทั้งหมด" :value="`${fmtNumber(data.late.count)} ครั้ง`" :hint="`รวม ${fmtMinutes(data.late.minutes)}`" icon="📊" tone="slate" />
         <StatCard label="พักร้อนคงเหลือ" :value="`${fmtNumber(vacationLeft)} วัน`" hint="ปีนี้" icon="🏖️" tone="sky" />
-        <NuxtLink to="/warnings" class="block rounded-2xl transition hover:shadow-md">
+        <NuxtLink to="/warnings" class="block min-w-0 rounded-2xl transition hover:shadow-md">
           <StatCard class="h-full" label="ใบเตือนที่มีผล" :value="`${fmtNumber(data.active_warnings)} ใบ`" hint="ดูรายละเอียด" icon="📝" :tone="data.active_warnings ? 'rose' : 'slate'" />
         </NuxtLink>
       </div>
 
-      <div class="grid gap-6 lg:grid-cols-2">
-        <section class="card">
+      <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <section class="card min-w-0">
           <div class="mb-4 flex items-center justify-between gap-2">
             <h2 class="font-semibold text-slate-800">วันลาที่ใช้ไปปีนี้</h2>
             <NuxtLink to="/leave" class="text-sm font-medium text-brand-700 hover:underline">ขอลา →</NuxtLink>
@@ -128,7 +128,7 @@ onMounted(load)
           </div>
         </section>
 
-        <div class="space-y-6">
+        <div class="min-w-0 space-y-6">
           <section class="card">
             <div class="flex items-center justify-between gap-2">
               <h2 class="font-semibold text-slate-800">💰 OT เดือนนี้</h2>
@@ -149,7 +149,7 @@ onMounted(load)
             </button>
             <EmptyState v-if="!data.announcements.length" text="ยังไม่มีประกาศ" />
             <ul v-else class="divide-y divide-slate-100">
-              <li v-for="a in data.announcements" :key="a.id">
+              <li v-for="a in data.announcements" :key="a.id" class="min-w-0">
                 <button class="block w-full rounded-lg px-1 py-2 text-left hover:bg-slate-50" @click="openDetail(a)">
                   <p class="truncate text-sm font-medium text-slate-800">{{ a.pinned ? '📌 ' : '' }}{{ a.title }}</p>
                   <p class="truncate text-xs text-slate-500">{{ a.body }}</p>

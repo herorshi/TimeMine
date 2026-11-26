@@ -52,7 +52,7 @@ function show(a) { selected.value = a; open.value = true }
         <h2 class="line-clamp-2 w-full break-words font-semibold text-slate-800">{{ a.title }}</h2>
         <p class="line-clamp-3 w-full whitespace-pre-line break-words text-sm text-slate-500">{{ a.body }}</p>
         <div v-if="a.event_date" class="flex flex-wrap items-center gap-2 text-sm text-slate-600">
-          <span>🗓️ {{ fmtDate(a.event_date) }}</span>
+          <span><span class="mr-1.5">🗓️</span>{{ fmtDate(a.event_date) }}</span>
           <StatusBadge v-bind="countdown(a.event_date)" />
         </div>
         <p class="mt-auto pt-1 text-xs text-slate-400">{{ fmtDateTime(a.created_at) }}</p>
@@ -64,7 +64,7 @@ function show(a) { selected.value = a; open.value = true }
         <h2 class="break-words text-lg font-bold text-slate-800">{{ selected.title }}</h2>
         <p class="mt-1 text-xs text-slate-400">{{ fmtDateTime(selected.created_at) }}<span v-if="selected.author_name"> · โดย {{ selected.author_name }}</span></p>
         <div v-if="selected.event_date" class="mt-3 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-          <span>🗓️ วันจัดกิจกรรม {{ fmtDate(selected.event_date) }}</span>
+          <span><span class="mr-2">🗓️</span>วันจัดกิจกรรม {{ fmtDate(selected.event_date) }}</span>
           <StatusBadge v-bind="countdown(selected.event_date)" />
         </div>
         <p class="mt-4 whitespace-pre-line break-words text-sm leading-relaxed text-slate-700">{{ selected.body }}</p>

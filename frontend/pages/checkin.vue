@@ -17,6 +17,9 @@ const loading = ref(true)
 const busy = ref('') // mode being checked in, or 'out'
 const today = ref(null)
 const history = ref([])
+const PAGE_SIZE = 20
+const shown = ref(PAGE_SIZE)
+const visibleHistory = computed(() => history.value.slice(0, shown.value))
 const late = ref({ count: 0, minutes: 0, month_count: 0, month_minutes: 0 })
 const note = ref('')
 const scanOpen = ref(false)
@@ -89,13 +92,13 @@ async function checkOut() {
         ⚠️ มาสาย {{ fmtMinutes(today.late_minutes) }}
       </div>
 
-      <div class="grid gap-5 lg:grid-cols-2">
-        <div class="card flex flex-col items-center justify-center text-center">
+      <div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <div class="card flex min-w-0 flex-col items-center justify-center text-center">
           <p class="text-sm text-slate-500">{{ dayjs(now).format('dddd D MMMM YYYY') }}</p>
           <p class="mt-2 text-5xl font-bold tabular-nums text-slate-800">{{ dayjs(now).format('HH:mm:ss') }}</p>
         </div>
 
-        <div class="card">
+        <div class="card min-w-0">
           <h2 class="mb-3 font-semibold">สถานะวันนี้</h2>
           <template v-if="today">
             <div class="flex flex-wrap items-center gap-2 text-sm">
@@ -118,7 +121,7 @@ async function checkOut() {
         <h2 class="mb-3 font-semibold">ลงเวลาเข้างาน</h2>
         <label class="label">หมายเหตุ (ไม่บังคับ)</label>
         <input v-model="note" class="input mb-4" placeholder="พิมพ์หมายเหตุ...">
-        <div class="grid gap-3 sm:grid-cols-3">
+        <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <button v-for="(m, key) in CHECKIN_MODES" :key="key" class="btn-secondary flex-col py-5" :disabled="!!busy" @click="pick(key)">
             <Spinner v-if="busy === key" />
             <span v-else class="text-3xl">{{ m.icon }}</span>
@@ -134,14 +137,14 @@ async function checkOut() {
         <StatCard label="เวลาสายทั้งหมด" :value="fmtMinutes(late.minutes)" tone="rose" />
       </div>
 
-      <div>
+      <div class="min-w-0">
         <h2 class="mb-3 font-semibold">ประวัติการลงเวลา</h2>
         <div v-if="!history.length" class="card"><EmptyState text="ยังไม่มีประวัติการลงเวลา" /></div>
         <div v-else class="table-wrap">
           <table class="table whitespace-nowrap">
             <thead><tr><th>วันที่</th><th>รูปแบบ</th><th>เข้า</th><th>ออก</th><th>มาสาย</th><th>สถานะ</th></tr></thead>
             <tbody>
-              <tr v-for="r in history" :key="r.id">
+              <tr v-for="r in visibleHistory" :key="r.id">
                 <td>{{ fmtDate(r.date) }}</td>
                 <td>{{ CHECKIN_MODES[r.mode]?.icon }} {{ CHECKIN_MODES[r.mode]?.label }}</td>
                 <td>{{ fmtTime(r.check_in_at) }}</td>
@@ -154,6 +157,10 @@ async function checkOut() {
               </tr>
             </tbody>
           </table>
+        </div>
+        <div v-if="history.length > shown" class="mt-3 flex flex-col items-center gap-1">
+          <button type="button" class="btn-secondary" @click="shown += PAGE_SIZE">แสดงเพิ่ม</button>
+          <p class="text-xs text-slate-400">แสดง {{ fmtNumber(visibleHistory.length) }} จาก {{ fmtNumber(history.length) }} รายการ</p>
         </div>
       </div>
     </div>
