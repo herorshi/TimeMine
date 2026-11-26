@@ -59,6 +59,8 @@ export const db = {
 }
 
 queue(() => client.execute('PRAGMA foreign_keys = ON').catch(() => {}))
+// additive migrations for databases created before a column existed (errors = column already there)
+const addColumn = (table, col) => queue(() => client.execute(`ALTER TABLE ${table} ADD COLUMN ${col}`).catch(() => {}))
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -128,6 +130,7 @@ CREATE TABLE IF NOT EXISTS announcements (
   type TEXT NOT NULL DEFAULT 'news' CHECK (type IN ('news','event')),
   event_date TEXT,
   pinned INTEGER NOT NULL DEFAULT 0,
+  image_url TEXT,
   author_id INTEGER REFERENCES users(id),
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
@@ -146,3 +149,4 @@ CREATE TABLE IF NOT EXISTS warnings (
 CREATE TABLE IF NOT EXISTS role_permissions (role TEXT NOT NULL, perm TEXT NOT NULL, allowed INTEGER NOT NULL, PRIMARY KEY (role, perm));
 CREATE TABLE IF NOT EXISTS user_permissions (user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, perm TEXT NOT NULL, allowed INTEGER NOT NULL, PRIMARY KEY (user_id, perm));
 `)
+addColumn('announcements', 'image_url TEXT') // announcement image (Vercel Blob URL, or a data URL in local dev)
