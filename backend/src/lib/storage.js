@@ -10,13 +10,14 @@ export function isBlobUrl(url) {
   if (!store) return false
   try {
     const u = new URL(url)
-    return u.protocol === 'https:' && u.host === `${store}.public.blob.vercel-storage.com` && u.pathname.startsWith('/announcements/')
+    return u.protocol === 'https:' && u.host === `${store}.public.blob.vercel-storage.com` && (u.pathname.startsWith('/announcements/') || u.pathname.startsWith('/faces/'))
   } catch { return false }
 }
 
 export async function saveImage(buffer, contentType, name = randomUUID()) {
   if (!process.env.BLOB_READ_WRITE_TOKEN) return `data:${contentType};base64,${buffer.toString('base64')}`
-  const { url } = await put(`announcements/${name}.${EXT[contentType]}`, buffer, { access: 'public', contentType })
+  const path = name.includes('/') ? name : `announcements/${name}` // 'faces/...' names keep their own folder
+  const { url } = await put(`${path}.${EXT[contentType]}`, buffer, { access: 'public', contentType })
   return url
 }
 
