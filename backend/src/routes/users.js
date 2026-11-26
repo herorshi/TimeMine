@@ -58,15 +58,15 @@ function update(id, data) {
   return publicUser(findUser(id))
 }
 
-/** load :id for an admin action; only an executive may manage executive accounts */
+/** load :id for an admin action; only an executive may manage admin/executive accounts */
 function target(req) {
   const user = findUser(req.params.id)
   if (!user) throw httpError(404, 'ไม่พบพนักงาน')
-  if (user.role === 'executive' && req.user.role !== 'executive') throw httpError(403, 'เฉพาะผู้บริหารเท่านั้นที่จัดการบัญชีผู้บริหารได้')
+  if (user.role !== 'employee' && req.user.role !== 'executive') throw httpError(403, 'เฉพาะผู้บริหารเท่านั้น')
   return user
 }
 function checkGrant(req, role) {
-  if (role === 'executive' && req.user.role !== 'executive') throw httpError(403, 'เฉพาะผู้บริหารเท่านั้นที่กำหนดสิทธิ์ผู้บริหารได้')
+  if (role && role !== 'employee' && req.user.role !== 'executive') throw httpError(403, 'เฉพาะผู้บริหารเท่านั้น')
 }
 
 router.get('/me', (req, res) => res.json(publicUser(req.user)))
@@ -112,6 +112,24 @@ router.delete('/:id', requireRole('admin'), (req, res) => {
   const user = target(req)
   if (user.id === req.user.id) throw httpError(400, 'ไม่สามารถปิดการใช้งานบัญชีของตัวเองได้')
   res.json(update(user.id, { active: 0 }))
+})
+
+const deleteUser = db.transaction((id) => {
+  for (const table of ['attendance', 'leaves', 'ot_requests', 'warnings']) db.prepare(`DELETE FROM ${table} WHERE user_id = ?`).run(id)
+  // other people's records stay; only drop the reference to the deleted user
+  for (const [table, column] of [['attendance', 'reviewed_by'], ['leaves', 'reviewed_by'], ['ot_requests', 'reviewed_by'],
+    ['warnings', 'issued_by'], ['warnings', 'cancelled_by'], ['announcements', 'author_id']])
+    db.prepare(`UPDATE ${table} SET ${column} = NULL WHERE ${column} = ?`).run(id)
+  db.prepare('DELETE FROM users WHERE id = ?').run(id)
+})
+
+router.delete('/:id/permanent', requireRole('admin'), (req, res) => {
+  const user = target(req)
+  if (user.id === req.user.id) throw httpError(400, 'ไม่สามารถลบบัญชีของตัวเองได้')
+  if (user.role === 'executive' && !db.prepare("SELECT 1 FROM users WHERE role = 'executive' AND active = 1 AND id != ?").get(user.id))
+    throw httpError(400, 'ไม่สามารถลบผู้บริหารคนสุดท้ายได้')
+  deleteUser(user.id)
+  res.json({ ok: true })
 })
 
 export default router

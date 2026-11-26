@@ -14,6 +14,7 @@ const search = ref('')
 const formOpen = ref(false)
 const resetOpen = ref(false)
 const offOpen = ref(false)
+const delOpen = ref(false)
 const selected = ref(null) // null = creating
 const newPassword = ref('')
 const blank = { emp_code: '', email: '', password: '', name: '', gender: 'M', role: 'employee', department: '', position: '', phone: '', address: '', birthdate: '', start_date: '', salary: 0 }
@@ -24,9 +25,9 @@ const filtered = computed(() => {
   if (!q) return users.value
   return users.value.filter((u) => [u.emp_code, u.name, u.email, u.department, u.position].some((v) => String(v || '').toLowerCase().includes(q)))
 })
-// only an executive can manage executive accounts or grant that role
-const canManage = (u) => auth.isExecutive || u.role !== 'executive'
-const roleOptions = computed(() => Object.entries(ROLE_LABELS).filter(([k]) => auth.isExecutive || k !== 'executive'))
+// only an executive can manage admin/executive accounts or grant those roles
+const canManage = (u) => auth.isExecutive || u.role === 'employee'
+const roleOptions = computed(() => Object.entries(ROLE_LABELS).filter(([k]) => auth.isExecutive || k === 'employee'))
 const isSelf = (u) => u?.id === auth.user?.id
 
 async function load() {
@@ -41,6 +42,7 @@ function openForm(u = null) {
 }
 function openReset(u) { selected.value = u; newPassword.value = ''; resetOpen.value = true }
 function openOff(u) { selected.value = u; offOpen.value = true }
+function openDelete(u) { selected.value = u; delOpen.value = true }
 
 /** run a request, then close the modal, toast and reload */
 async function run(request, open, message) {
@@ -59,6 +61,7 @@ function save() {
 }
 const resetPassword = () => run(() => api.post(`/users/${selected.value.id}/reset-password`, { password: newPassword.value }), resetOpen, 'ตั้งรหัสผ่านใหม่แล้ว')
 const deactivate = () => run(() => api.delete(`/users/${selected.value.id}`), offOpen, 'ปิดการใช้งานแล้ว')
+const remove = () => run(() => api.delete(`/users/${selected.value.id}/permanent`), delOpen, 'ลบบัญชีแล้ว')
 async function activate(u) {
   try {
     await api.put(`/users/${u.id}`, { active: true })
@@ -81,25 +84,33 @@ async function activate(u) {
     <div v-else class="table-wrap">
       <table class="table">
         <thead>
-          <tr><th>รหัส</th><th>ชื่อ</th><th>แผนก</th><th>ตำแหน่ง</th><th>สิทธิ์</th><th>เพศ</th><th>เงินเดือน</th><th>ใบหน้า</th><th>สถานะ</th><th>จัดการ</th></tr>
+          <tr><th>พนักงาน</th><th>แผนก / ตำแหน่ง</th><th>สิทธิ์</th><th>เงินเดือน</th><th>สถานะ / ใบหน้า</th><th>จัดการ</th></tr>
         </thead>
         <tbody>
           <tr v-for="u in filtered" :key="u.id" :class="{ 'opacity-60': !u.active }">
-            <td class="whitespace-nowrap">{{ u.emp_code }}</td>
-            <td class="whitespace-nowrap"><p class="font-medium">{{ u.name }}</p><p class="text-xs text-slate-400">{{ u.email }}</p></td>
-            <td class="whitespace-nowrap">{{ u.department || '-' }}</td>
-            <td class="whitespace-nowrap">{{ u.position || '-' }}</td>
-            <td class="whitespace-nowrap">{{ ROLE_LABELS[u.role] }}</td>
-            <td>{{ u.gender === 'M' ? 'ชาย' : 'หญิง' }}</td>
-            <td class="whitespace-nowrap">{{ fmtMoney(u.salary) }}</td>
-            <td><StatusBadge :color="u.face_enrolled ? 'emerald' : 'slate'" :label="u.face_enrolled ? 'ลงทะเบียนแล้ว' : 'ยังไม่ลงทะเบียน'" /></td>
-            <td><StatusBadge :color="u.active ? 'emerald' : 'rose'" :label="u.active ? 'ใช้งาน' : 'ปิดใช้งาน'" /></td>
             <td>
-              <div v-if="canManage(u)" class="flex gap-2 whitespace-nowrap">
+              <div class="w-44">
+                <p class="break-words font-medium">{{ u.name }}</p>
+                <p class="truncate text-xs text-slate-400" :title="u.email">{{ u.email }}</p>
+                <p class="text-xs text-slate-400">{{ u.emp_code }} · {{ u.gender === 'M' ? 'ชาย' : 'หญิง' }}</p>
+              </div>
+            </td>
+            <td class="min-w-[8rem]"><p>{{ u.department || '-' }}</p><p class="text-xs text-slate-400">{{ u.position || '-' }}</p></td>
+            <td class="whitespace-nowrap">{{ ROLE_LABELS[u.role] }}</td>
+            <td class="whitespace-nowrap">{{ fmtMoney(u.salary) }}</td>
+            <td>
+              <div class="flex flex-col items-start gap-1">
+                <StatusBadge :color="u.active ? 'emerald' : 'rose'" :label="u.active ? 'ใช้งาน' : 'ปิดใช้งาน'" />
+                <StatusBadge :color="u.face_enrolled ? 'emerald' : 'slate'" :label="u.face_enrolled ? 'ลงทะเบียนแล้ว' : 'ยังไม่ลงทะเบียน'" />
+              </div>
+            </td>
+            <td>
+              <div v-if="canManage(u)" class="flex w-48 flex-wrap gap-1.5">
                 <button class="btn-secondary btn-sm" @click="openForm(u)">แก้ไข</button>
                 <button class="btn-secondary btn-sm" @click="openReset(u)">รีเซ็ตรหัส</button>
-                <button v-if="u.active && !isSelf(u)" class="btn-danger btn-sm" @click="openOff(u)">ปิดใช้งาน</button>
+                <button v-if="u.active && !isSelf(u)" class="btn-secondary btn-sm" @click="openOff(u)">ปิดใช้งาน</button>
                 <button v-else-if="!u.active" class="btn-secondary btn-sm" @click="activate(u)">เปิดใช้งาน</button>
+                <button v-if="!isSelf(u)" class="btn-danger btn-sm" @click="openDelete(u)">ลบ</button>
               </div>
               <span v-else class="text-slate-400">-</span>
             </td>
@@ -146,5 +157,6 @@ async function activate(u) {
     </AppModal>
 
     <ConfirmModal v-model="offOpen" title="ปิดการใช้งานพนักงาน" :message="`ปิดการใช้งานบัญชีของ ${selected?.name}? พนักงานจะเข้าสู่ระบบไม่ได้`" confirm-text="ปิดใช้งาน" danger :loading="busy" @confirm="deactivate" />
+    <ConfirmModal v-model="delOpen" title="ลบบัญชีถาวร" :message="`ลบบัญชีของ ${selected?.name} และข้อมูลการเข้างาน การลา OT และใบเตือนทั้งหมดอย่างถาวร? ไม่สามารถกู้คืนได้`" confirm-text="ลบถาวร" danger :loading="busy" @confirm="remove" />
   </div>
 </template>
