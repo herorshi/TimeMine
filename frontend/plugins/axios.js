@@ -15,12 +15,16 @@ export default defineNuxtPlugin(() => {
     (res) => { inflight.value--; return res },
     (err) => {
       inflight.value--
-      if (err?.response?.status === 401 && useAuthStore().token) {
-        useAuthStore().logout()
-        navigateTo('/login')
-      }
+      if (err?.response?.status === 401 && useAuthStore().expire()) navigateTo('/login?expired=1')
       return Promise.reject(err)
     },
   )
+  // idle tabs: leave as soon as the token expires (public pages stay put, e.g. reset-password)
+  const nuxtApp = useNuxtApp()
+  setInterval(() => nuxtApp.runWithContext(() => {
+    const path = useRouter().currentRoute.value.path
+    if (useAuthStore().checkExpiry() && !['/forgot-password', '/reset-password'].includes(path)) return navigateTo('/login?expired=1')
+  }), 30000)
+
   return { provide: { api } }
 })
