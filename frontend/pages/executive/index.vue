@@ -33,6 +33,29 @@ async function load() {
   }
 }
 watch(year, load)
+
+const exporting = ref(false)
+async function exportExcel() {
+  exporting.value = true
+  const y = year.value
+  try {
+    const { data } = await api.get('/stats/overview', { params: { year: y, format: 'xlsx' }, responseType: 'blob' })
+    const url = URL.createObjectURL(data)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `overview_${y}.xlsx`
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+    toast.success('ดาวน์โหลด Excel แล้ว')
+  } catch (e) {
+    // with responseType 'blob' the server's Thai error message arrives as a Blob
+    let message = apiError(e)
+    try { message = JSON.parse(await e.response.data.text()).error || message } catch {}
+    toast.error(message)
+  } finally {
+    exporting.value = false
+  }
+}
 onMounted(load)
 
 const labels = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
@@ -62,6 +85,7 @@ const deptSets = computed(() => [{ label: 'เงินเดือนทั้�
           <option v-for="y in years" :key="y" :value="y">{{ y + 543 }}</option>
         </select>
       </label>
+      <button class="btn-primary" :disabled="exporting || loading || !stats" @click="exportExcel"><Spinner v-if="exporting" class="h-4 w-4" />📊 Export Excel</button>
     </PageHeader>
 
     <LoadingBlock v-if="loading" />
