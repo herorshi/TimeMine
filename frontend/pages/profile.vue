@@ -1,6 +1,7 @@
 <script setup>
 import { ROLE_LABELS } from '~/utils/constants'
 import { fmtDate, fmtDateTime, fmtMoney, apiError } from '~/utils/format'
+import { cleanPhone, isPhone, PHONE_PATTERN, PHONE_HINT } from '~/utils/validate'
 
 const api = useApi()
 const auth = useAuthStore()
@@ -50,6 +51,7 @@ function openPass() {
   passOpen.value = true
 }
 async function saveProfile() {
+  if (form.phone && !isPhone(form.phone)) return toast.error('รูปแบบเบอร์โทรไม่ถูกต้อง: ' + PHONE_HINT)
   busy.value = true
   try {
     user.value = (await api.put('/users/me', { ...form })).data
@@ -113,7 +115,7 @@ async function savePassword() {
     <AppModal v-model="editOpen" title="แก้ไขข้อมูลส่วนตัว">
       <form id="profile-form" class="space-y-3" @submit.prevent="saveProfile">
         <div><label class="label">ชื่อ-นามสกุล</label><input v-model="form.name" class="input" required /></div>
-        <div><label class="label">เบอร์โทร</label><input v-model="form.phone" type="tel" class="input" /></div>
+        <div><label class="label">เบอร์โทร</label><input v-model="form.phone" type="tel" class="input" inputmode="numeric" maxlength="10" :pattern="PHONE_PATTERN" :title="PHONE_HINT" placeholder="0812345678" @input="form.phone = cleanPhone(form.phone)" /></div>
         <div><label class="label">วันเกิด</label><DateInput v-model="form.birthdate" clearable /></div>
         <div><label class="label">ที่อยู่</label><textarea v-model="form.address" rows="3" class="input" /></div>
         <div><label class="label">ลิงก์รูปโปรไฟล์</label><input v-model="form.avatar_url" type="url" class="input" placeholder="https://..." /></div>
