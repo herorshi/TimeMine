@@ -35,6 +35,13 @@ const users = [
   ['E007', 'thana@timemint.local', 'emp123', 'ธนา ร่ำรวย', 'M', 'employee', 'Sales', 'Sales Manager', 48000],
   ['E008', 'nittaya@timemint.local', 'emp123', 'นิตยา งามตา', 'F', 'employee', 'HR', 'HR Officer', 26000],
 ]
+// Real accounts added at seed time WITHOUT committing credentials:
+// SEED_EXTRA_EMPLOYEES="email|password|ชื่อ|M or F|แผนก|ตำแหน่ง|เงินเดือน;..." (env only, never in git)
+for (const [i, entry] of (process.env.SEED_EXTRA_EMPLOYEES || '').split(';').map((x) => x.trim()).filter(Boolean).entries()) {
+  const [email, pw, name, g = 'M', dept = 'General', pos = 'Staff', sal = '30000'] = entry.split('|').map((x) => x.trim())
+  if (!email || !pw || pw.length < 6) { console.warn(`[seed] skip extra employee #${i + 1}: need email|password(≥6)`); continue }
+  users.push([`E${String(101 + i)}`, email.toLowerCase(), pw, name || email.split('@')[0], g === 'F' ? 'F' : 'M', 'employee', dept, pos, Number(sal) || 30000])
+}
 const userRows = users.map(([code, email, pw, name, g, role, dept, pos, sal]) =>
   [code, email, hash(pw), name, g, role, dept, pos, sal, `08${Math.floor(10000000 + rnd() * 89999999)}`,
     `20${pad(18 + Math.floor(rnd() * 6))}-${pad(1 + Math.floor(rnd() * 12))}-01`, `19${85 + Math.floor(rnd() * 14)}-${pad(1 + Math.floor(rnd() * 12))}-${pad(1 + Math.floor(rnd() * 28))}`])

@@ -90,7 +90,7 @@ const remove = () => run(() => api.delete(`/users/${selected.value.id}/permanent
         <div><label class="label">รหัสพนักงาน</label><input v-model="form.emp_code" class="input" required /></div>
         <div><label class="label">ชื่อ-นามสกุล</label><input v-model="form.name" class="input" required /></div>
         <div><label class="label">อีเมล</label><input v-model="form.email" type="email" class="input" required autocomplete="off" /></div>
-        <div v-if="!selected"><label class="label">รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)</label><input v-model="form.password" type="password" class="input" required minlength="6" autocomplete="new-password" /></div>
+        <div v-if="!selected"><label class="label">รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)</label><PasswordInput v-model="form.password" required minlength="6" autocomplete="new-password"  /></div>
         <div><label class="label">เพศ</label><select v-model="form.gender" class="input"><option value="M">ชาย</option><option value="F">หญิง</option></select></div>
         <div><label class="label">แผนก</label><input v-model="form.department" class="input" /></div>
         <div><label class="label">ตำแหน่ง</label><input v-model="form.position" class="input" /></div>

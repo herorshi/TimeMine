@@ -107,9 +107,9 @@ async function savePassword() {
 
     <AppModal v-model="passOpen" title="เปลี่ยนรหัสผ่าน" size="sm">
       <form id="password-form" class="space-y-3" @submit.prevent="savePassword">
-        <div><label class="label">รหัสผ่านเดิม</label><input v-model="pass.current" type="password" class="input" required autocomplete="current-password" /></div>
-        <div><label class="label">รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)</label><input v-model="pass.next" type="password" class="input" required minlength="6" autocomplete="new-password" /></div>
-        <div><label class="label">ยืนยันรหัสผ่านใหม่</label><input v-model="pass.confirm" type="password" class="input" required minlength="6" autocomplete="new-password" /></div>
+        <div><label class="label">รหัสผ่านเดิม</label><PasswordInput v-model="pass.current" required autocomplete="current-password"  /></div>
+        <div><label class="label">รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)</label><PasswordInput v-model="pass.next" required minlength="6" autocomplete="new-password"  /></div>
+        <div><label class="label">ยืนยันรหัสผ่านใหม่</label><PasswordInput v-model="pass.confirm" required minlength="6" autocomplete="new-password"  /></div>
       </form>
       <template #footer>
         <button type="button" class="btn-secondary" @click="passOpen = false">ยกเลิก</button>

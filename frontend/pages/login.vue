@@ -35,7 +35,7 @@ async function submit() {
       </div>
       <form class="card space-y-4" @submit.prevent="submit">
         <div><label class="label">อีเมล</label><input v-model="form.email" type="email" class="input" required autocomplete="username" /></div>
-        <div><label class="label">รหัสผ่าน</label><input v-model="form.password" type="password" class="input" required autocomplete="current-password" /></div>
+        <div><label class="label">รหัสผ่าน</label><PasswordInput v-model="form.password" required autocomplete="current-password"  /></div>
         <div class="flex justify-end"><NuxtLink to="/forgot-password" class="text-sm font-medium text-brand-700 hover:underline">ลืมรหัสผ่าน?</NuxtLink></div>
         <button class="btn-primary w-full" :disabled="busy"><Spinner v-if="busy" class="h-4 w-4" />เข้าสู่ระบบ</button>
       </form>

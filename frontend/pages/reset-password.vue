@@ -9,7 +9,6 @@ const state = ref('loading') // loading | valid | invalid
 const emailMasked = ref('')
 const errorMessage = ref('ลิงก์หมดอายุหรือถูกใช้ไปแล้ว')
 const form = reactive({ password: '', confirm: '' })
-const show = ref(false)
 const busy = ref(false)
 
 onMounted(async () => {
@@ -54,9 +53,8 @@ async function submit() {
         <NuxtLink to="/forgot-password" class="btn-primary w-full">ขอลิงก์ใหม่</NuxtLink>
       </div>
       <form v-else class="card space-y-4" @submit.prevent="submit">
-        <div><label class="label">รหัสผ่านใหม่</label><input v-model="form.password" :type="show ? 'text' : 'password'" class="input" required minlength="6" autocomplete="new-password" /></div>
-        <div><label class="label">ยืนยันรหัสผ่านใหม่</label><input v-model="form.confirm" :type="show ? 'text' : 'password'" class="input" required minlength="6" autocomplete="new-password" /></div>
-        <label class="flex items-center gap-2 text-sm text-slate-600"><input v-model="show" type="checkbox" />แสดงรหัสผ่าน</label>
+        <div><label class="label">รหัสผ่านใหม่</label><PasswordInput v-model="form.password" required minlength="6" autocomplete="new-password"  /></div>
+        <div><label class="label">ยืนยันรหัสผ่านใหม่</label><PasswordInput v-model="form.confirm" required minlength="6" autocomplete="new-password"  /></div>
         <button class="btn-primary w-full" :disabled="busy"><Spinner v-if="busy" class="h-4 w-4" />บันทึกรหัสผ่านใหม่</button>
       </form>
     </div>

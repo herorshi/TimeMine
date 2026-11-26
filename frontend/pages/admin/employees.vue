@@ -126,7 +126,7 @@ async function activate(u) {
         <div><label class="label">รหัสพนักงาน</label><input v-model="form.emp_code" class="input" required /></div>
         <div><label class="label">ชื่อ-นามสกุล</label><input v-model="form.name" class="input" required /></div>
         <div><label class="label">อีเมล</label><input v-model="form.email" type="email" class="input" required autocomplete="off" /></div>
-        <div v-if="!selected"><label class="label">รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)</label><input v-model="form.password" type="password" class="input" required minlength="6" autocomplete="new-password" /></div>
+        <div v-if="!selected"><label class="label">รหัสผ่าน (อย่างน้อย 6 ตัวอักษร)</label><PasswordInput v-model="form.password" required minlength="6" autocomplete="new-password"  /></div>
         <div><label class="label">เพศ</label><select v-model="form.gender" class="input"><option value="M">ชาย</option><option value="F">หญิง</option></select></div>
         <div>
           <label class="label">สิทธิ์การใช้งาน</label>
@@ -150,7 +150,7 @@ async function activate(u) {
       <form id="reset-form" @submit.prevent="resetPassword">
         <p class="mb-3 text-sm text-slate-600">ตั้งรหัสผ่านใหม่ให้ {{ selected?.name }}</p>
         <label class="label">รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)</label>
-        <input v-model="newPassword" type="password" class="input" required minlength="6" autocomplete="new-password" />
+        <PasswordInput v-model="newPassword" required minlength="6" autocomplete="new-password"  />
       </form>
       <template #footer>
         <button type="button" class="btn-secondary" @click="resetOpen = false">ยกเลิก</button>
