@@ -18,18 +18,18 @@ router.get('/status', (req, res) => {
   res.json({ enrolled: !!req.user.face_descriptor })
 })
 
-router.post('/enroll', (req, res) => {
-  setDescriptor(req.user.id, JSON.stringify(readDescriptor(req)))
+router.post('/enroll', async (req, res) => {
+  await setDescriptor(req.user.id, JSON.stringify(readDescriptor(req)))
   res.json({ enrolled: true })
 })
 
-router.delete('/enroll', (req, res) => {
-  setDescriptor(req.user.id, null)
+router.delete('/enroll', async (req, res) => {
+  await setDescriptor(req.user.id, null)
   res.json({ enrolled: false })
 })
 
-router.post('/verify', (req, res) => {
-  const { enrolled, match, distance } = verifyFace(req.user, readDescriptor(req))
+router.post('/verify', async (req, res) => {
+  const { enrolled, match, distance } = await verifyFace(req.user, readDescriptor(req))
   if (!enrolled) throw httpError(400, 'ยังไม่ได้ลงทะเบียนใบหน้า')
   res.json({ match, distance })
 })

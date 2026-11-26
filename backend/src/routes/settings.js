@@ -19,9 +19,9 @@ const RULES = {
   face_threshold: [between(0.1, 1), 'เกณฑ์สแกนหน้าต้องอยู่ระหว่าง 0.1-1'],
 }
 
-router.get('/', (_req, res) => res.json(getSettings()))
+router.get('/', async (_req, res) => res.json(await getSettings()))
 
-router.put('/', requireRole('admin'), (req, res) => {
+router.put('/', requireRole('admin'), async (req, res) => {
   const patch = {}
   for (const k of Object.keys(DEFAULT_SETTINGS)) {
     if (req.body?.[k] === undefined) continue
@@ -30,7 +30,7 @@ router.put('/', requireRole('admin'), (req, res) => {
     if (!valid(v)) throw httpError(400, message)
     patch[k] = v
   }
-  res.json(setSettings(patch))
+  res.json(await setSettings(patch))
 })
 
 export default router
