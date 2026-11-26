@@ -9,7 +9,7 @@
  *
  * column: {
  *   key: 'status', label: 'สถานะ',
- *   filter: 'text' (default: shows a sort select, no free-text search) | 'select' | 'date' | 'none',
+ *   filter: 'text' (default: ▲/▼ sort buttons, no free-text search) | 'select' | 'date' | 'none',
  *   options: [{ value, label }]        // for 'select'; default = distinct values of the column
  *   value: (row) => any                 // raw value for filter/sort (default row[key])
  *   text:  (row) => string              // text shown in the cell (default String(value))
@@ -90,6 +90,7 @@ function toggleSort(c) {
   else if (sortDir.value === 1) sortDir.value = -1
   else { sortKey.value = null; sortDir.value = 1 }
 }
+const sortDirs = [{ v: 'asc', icon: '▲', label: 'น้อย → มาก' }, { v: 'desc', icon: '▼', label: 'มาก → น้อย' }]
 function sortValue(c) { return sortKey.value === c.key ? (sortDir.value === 1 ? 'asc' : 'desc') : '' }
 function setSort(c, v) {
   if (!v) { if (sortKey.value === c.key) { sortKey.value = null; sortDir.value = 1 } return }
@@ -136,11 +137,9 @@ const pageList = computed(() => {
                 <option v-for="o in selectOptions(c)" :key="o.value" :value="o.value">{{ o.label }}</option>
               </select>
               <DateInput v-else-if="filterType(c) === 'date'" v-model="filters[c.key]" clearable placeholder="วันที่" class="tm-date-sm" />
-              <select v-else-if="filterType(c) === 'text' && c.sortable !== false" :value="sortValue(c)" class="input !py-1 !text-xs" :aria-label="`เรียง ${c.label}`" @change="setSort(c, $event.target.value)">
-                <option value="">เรียง</option>
-                <option value="asc">น้อย → มาก</option>
-                <option value="desc">มาก → น้อย</option>
-              </select>
+              <div v-else-if="filterType(c) === 'text' && c.sortable !== false" class="inline-flex gap-1" role="group" :aria-label="`เรียง ${c.label}`">
+                <button v-for="d in sortDirs" :key="d.v" type="button" class="rounded-md border px-2 py-0.5 text-xs leading-5 transition" :class="sortValue(c) === d.v ? 'border-brand-600 bg-brand-600 text-white' : 'border-slate-200 bg-white text-slate-500 hover:border-brand-400 hover:text-brand-700'" :title="d.label" :aria-label="`${c.label} ${d.label}`" :aria-pressed="sortValue(c) === d.v" @click="setSort(c, sortValue(c) === d.v ? '' : d.v)">{{ d.icon }}</button>
+              </div>
             </th>
             <th v-if="hasActions" class="!bg-white !py-1.5 text-right">
               <button v-if="anyFilter || sortKey" class="text-xs font-medium text-brand-700 hover:underline" @click="clearFilters">ล้างตัวกรอง</button>
