@@ -59,6 +59,48 @@ async function exportExcel() {
 onMounted(load)
 
 const labels = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.']
+
+// computed rows keep a stable reference, so DataTable only resets its page when the data changes
+const monthRows = computed(() => (stats.value?.months || []).map((m, i) => ({ ...m, label: labels[i] })))
+const lateRows = computed(() => (stats.value?.top_late || []).map((u, i) => ({ ...u, rank: i + 1 })))
+
+// value = what sorting uses; text = what the user sees (the text filter matches either)
+const col = (key, label, value, text, extra) => ({ key, label, value, text: text && ((r) => text(value(r))), ...extra })
+const money = (key, label, field) => col(key, label, (r) => r.payroll[field], fmtMoney, { align: 'right' })
+const monthColumns = [
+  { key: 'month', label: 'เดือน', filter: 'select', text: (r) => r.label },
+  col('working_days', 'วัน\nทำงาน', (r) => r.working_days),
+  col('checkins', 'เช็คอิน', (r) => r.checkins, fmtNumber),
+  { key: 'late', label: 'มาสาย\n/ เวลาสาย', value: (r) => r.late_count, text: (r) => `${fmtNumber(r.late_count)} ครั้ง ${fmtMinutes(r.late_minutes)}` },
+  { key: 'wfh', label: 'WFH\nอนุมัติ/ไม่', value: (r) => r.wfh_approved, text: (r) => `${r.wfh_approved} / ${r.wfh_rejected}` },
+  { key: 'warnings', label: 'ใบเตือน\nออก/ยกเลิก', value: (r) => r.warnings_issued, text: (r) => `${r.warnings_issued} / ${r.warnings_cancelled}` },
+  money('base', 'ฐาน\nเงินเดือน', 'base'),
+  money('ot', 'OT', 'ot'),
+  money('deduction', 'หัก', 'deduction'),
+  money('total', 'สุทธิ', 'total'),
+]
+const lateColumns = [
+  { key: 'rank', label: '#' },
+  { key: 'emp_code', label: 'รหัส' },
+  { key: 'name', label: 'ชื่อ', class: 'whitespace-nowrap' },
+  { key: 'department', label: 'แผนก', filter: 'select', value: (r) => r.department || '-' },
+  { key: 'late_count', label: 'จำนวนครั้ง' },
+  { key: 'late_minutes', label: 'เวลาสายรวม', text: (r) => fmtMinutes(r.late_minutes), class: 'whitespace-nowrap' },
+]
+const yearTotals = computed(() => {
+  const t = stats.value.totals
+  return [
+    ['วันทำงาน', t.working_days],
+    ['เช็คอิน', fmtNumber(t.checkins)],
+    ['มาสาย / เวลาสาย', `${fmtNumber(t.late_count)} ครั้ง · ${fmtMinutes(t.late_minutes)}`],
+    ['WFH อนุมัติ/ไม่', `${t.wfh_approved} / ${t.wfh_rejected}`],
+    ['ใบเตือน ออก/ยกเลิก', `${t.warnings_issued} / ${t.warnings_cancelled}`],
+    ['ฐานเงินเดือน', fmtMoney(t.payroll.base)],
+    ['OT', fmtMoney(t.payroll.ot)],
+    ['หัก', fmtMoney(t.payroll.deduction)],
+    ['สุทธิ', fmtMoney(t.payroll.total)],
+  ]
+})
 const series = (fn) => stats.value.months.map(fn)
 
 // "payroll this month" = the current month in the current year, December for a past year
@@ -125,50 +167,32 @@ const deptSets = computed(() => [{ label: 'เงินเดือนทั้�
         </div>
       </div>
 
-      <div class="card">
+      <div class="card min-w-0">
         <h2 class="mb-3 font-semibold text-slate-800">สรุปรายเดือน</h2>
-        <div class="table-wrap">
-          <!-- compact so all columns fit ~916px (1280 with sidebar); narrower screens scroll inside .table-wrap -->
-          <table class="table whitespace-nowrap !text-xs [&_td]:!px-1.5 [&_th]:!px-1.5">
-            <thead>
-              <tr>
-                <th>เดือน</th><th>วัน<br>ทำงาน</th><th>เช็คอิน</th><th>มาสาย<br>/ เวลาสาย</th><th>WFH<br>อนุมัติ/ไม่</th>
-                <th>ใบเตือน<br>ออก/ยกเลิก</th><th class="text-right">ฐาน<br>เงินเดือน</th><th class="text-right">OT</th><th class="text-right">หัก</th><th class="text-right">สุทธิ</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(m, i) in stats.months" :key="m.month">
-                <td>{{ labels[i] }}</td><td>{{ m.working_days }}</td><td>{{ fmtNumber(m.checkins) }}</td>
-                <td>{{ fmtNumber(m.late_count) }} ครั้ง<div class="text-[11px] text-slate-400">{{ fmtMinutes(m.late_minutes) }}</div></td>
-                <td>{{ m.wfh_approved }} / {{ m.wfh_rejected }}</td>
-                <td>{{ m.warnings_issued }} / {{ m.warnings_cancelled }}</td><td class="text-right">{{ fmtMoney(m.payroll.base) }}</td>
-                <td class="text-right">{{ fmtMoney(m.payroll.ot) }}</td><td class="text-right">{{ fmtMoney(m.payroll.deduction) }}</td><td class="text-right font-medium">{{ fmtMoney(m.payroll.total) }}</td>
-              </tr>
-              <tr class="font-semibold">
-                <td>รวม</td><td>{{ stats.totals.working_days }}</td><td>{{ fmtNumber(stats.totals.checkins) }}</td>
-                <td>{{ fmtNumber(stats.totals.late_count) }} ครั้ง<div class="text-[11px] font-normal text-slate-400">{{ fmtMinutes(stats.totals.late_minutes) }}</div></td>
-                <td>{{ stats.totals.wfh_approved }} / {{ stats.totals.wfh_rejected }}</td>
-                <td>{{ stats.totals.warnings_issued }} / {{ stats.totals.warnings_cancelled }}</td><td class="text-right">{{ fmtMoney(stats.totals.payroll.base) }}</td>
-                <td class="text-right">{{ fmtMoney(stats.totals.payroll.ot) }}</td><td class="text-right">{{ fmtMoney(stats.totals.payroll.deduction) }}</td><td class="text-right">{{ fmtMoney(stats.totals.payroll.total) }}</td>
-              </tr>
-            </tbody>
-          </table>
+        <!-- compact so all columns fit ~916px (1280 with sidebar); narrower screens scroll inside .table-wrap -->
+        <DataTable
+          class="[&_.table]:whitespace-nowrap [&_.table]:!text-xs [&_.table_td]:!px-1.5 [&_.table_th]:!px-1.5 [&_thead_span]:whitespace-pre-line [&_thead_.input]:min-w-[3.5rem] [&_thead_.input]:!px-1"
+          :columns="monthColumns" :rows="monthRows" row-key="month"
+        >
+          <template #cell-late="{ row }">
+            {{ fmtNumber(row.late_count) }} ครั้ง<div class="text-[11px] text-slate-400">{{ fmtMinutes(row.late_minutes) }}</div>
+          </template>
+          <template #cell-total="{ value }"><span class="font-medium">{{ fmtMoney(value) }}</span></template>
+        </DataTable>
+        <div class="mt-3 rounded-xl bg-slate-50 p-3">
+          <h3 class="mb-2 text-sm font-semibold text-slate-800">รวมทั้งปี</h3>
+          <dl class="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3 lg:grid-cols-5">
+            <div v-for="[label, value] in yearTotals" :key="label">
+              <dt class="text-slate-500">{{ label }}</dt>
+              <dd class="font-semibold text-slate-800">{{ value }}</dd>
+            </div>
+          </dl>
         </div>
       </div>
 
-      <div class="card">
+      <div class="card min-w-0">
         <h2 class="mb-3 font-semibold text-slate-800">พนักงานมาสายสูงสุด</h2>
-        <div v-if="stats.top_late.length" class="table-wrap">
-          <table class="table">
-            <thead><tr><th>#</th><th>รหัส</th><th>ชื่อ</th><th>แผนก</th><th>จำนวนครั้ง</th><th>เวลาสายรวม</th></tr></thead>
-            <tbody>
-              <tr v-for="(u, i) in stats.top_late" :key="u.user_id">
-                <td>{{ i + 1 }}</td><td>{{ u.emp_code }}</td><td class="whitespace-nowrap">{{ u.name }}</td><td>{{ u.department || '-' }}</td>
-                <td>{{ u.late_count }}</td><td class="whitespace-nowrap">{{ fmtMinutes(u.late_minutes) }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <DataTable v-if="lateRows.length" :columns="lateColumns" :rows="lateRows" row-key="user_id" />
         <EmptyState v-else icon="🎉" text="ไม่มีพนักงานมาสายในปีนี้" />
       </div>
     </div>
