@@ -23,6 +23,30 @@ const newPassword = ref('')
 const blank = { emp_code: '', email: '', password: '', name: '', gender: 'M', role: 'employee', department: '', position: '', phone: '', address: '', birthdate: '', start_date: '', salary: 0 }
 const form = reactive({ ...blank })
 
+const BASE_DEPARTMENTS = ['HR', 'Management', 'Engineering', 'Sales', 'Marketing', 'Finance', 'IT', 'General']
+const departmentOptions = computed(() => {
+  const set = new Set(BASE_DEPARTMENTS)
+  for (const u of users.value) { const d = String(u.department || '').trim(); if (d) set.add(d) }
+  if (form.department) set.add(form.department)
+  return [...set].sort((a, b) => a.localeCompare(b))
+})
+
+// salary: Number in state, comma-grouped text for display (max 2 decimals)
+const fmtSalaryText = (raw) => {
+  let t = String(raw ?? '').replace(/[^\d.]/g, '')
+  const i = t.indexOf('.')
+  if (i >= 0) t = t.slice(0, i + 1) + t.slice(i + 1).replace(/\./g, '').slice(0, 2)
+  const [int, dec] = t.split('.')
+  const grouped = (int || '').replace(/^0+(?=\d)/, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+  return dec !== undefined ? (grouped || '0') + '.' + dec : grouped
+}
+const salaryText = computed(() => fmtSalaryText(form.salary))
+function onSalaryInput(e) {
+  const text = fmtSalaryText(e.target.value)
+  e.target.value = text
+  form.salary = Number(text.replace(/,/g, '')) || 0
+}
+
 const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
   if (!q) return users.value
@@ -152,9 +176,9 @@ async function activate(u) {
           <label class="label">สิทธิ์การใช้งาน</label>
           <select v-model="form.role" class="input" :disabled="isSelf(selected)"><option v-for="[k, label] in roleOptions" :key="k" :value="k">{{ label }}</option></select>
         </div>
-        <div><label class="label">แผนก</label><input v-model="form.department" class="input" /></div>
+        <div><label class="label">แผนก</label><select v-model="form.department" class="input"><option value="" disabled>เลือกแผนก</option><option v-for="d in departmentOptions" :key="d" :value="d">{{ d }}</option></select></div>
         <div><label class="label">ตำแหน่ง</label><input v-model="form.position" class="input" /></div>
-        <div><label class="label">เงินเดือน (บาท)</label><input v-model.number="form.salary" type="number" min="0" step="0.01" class="input" required /></div>
+        <div><label class="label">เงินเดือน (บาท)</label><input :value="salaryText" @input="onSalaryInput" type="text" inputmode="decimal" autocomplete="off" pattern="[0-9,]+(\.[0-9]{1,2})?" class="input" required /></div>
         <div><label class="label">เบอร์โทร</label><input v-model="form.phone" type="tel" class="input" /></div>
         <div><label class="label">วันเกิด</label><DateInput v-model="form.birthdate" clearable /></div>
         <div><label class="label">วันเริ่มงาน</label><DateInput v-model="form.start_date" clearable /></div>
