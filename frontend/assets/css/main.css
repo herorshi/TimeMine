@@ -1,3 +1,89 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Shared UI classes — use these instead of re-styling every page. */
+@layer components {
+  .card { @apply rounded-2xl border border-slate-200 bg-white p-5 shadow-sm; }
+  .btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition duration-150 active:scale-[.97] disabled:cursor-not-allowed disabled:opacity-50 disabled:active:scale-100; }
+  .btn-primary { @apply btn bg-brand-600 text-white hover:bg-brand-700; }
+  .btn-secondary { @apply btn border border-slate-300 bg-white text-slate-700 hover:bg-slate-50; }
+  .btn-danger { @apply btn bg-rose-600 text-white hover:bg-rose-700; }
+  .btn-ghost { @apply btn text-slate-600 hover:bg-slate-100; }
+  .btn-sm { @apply px-3 py-1.5 text-xs; }
+  .input { @apply w-full rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100; }
+  .label { @apply mb-1 block text-sm font-medium text-slate-700; }
+  .table { @apply w-full text-left text-[13px]; }
+  .table th { @apply whitespace-nowrap border-b border-slate-200 bg-slate-50 px-2.5 py-2 font-medium text-slate-600; }
+  .table td { @apply border-b border-slate-100 px-2.5 py-2 align-middle; }
+  .table-wrap { @apply overflow-x-auto rounded-xl border border-slate-200 bg-white; }
+}
+
+/* Animations: only transform/opacity move. Kept outside @layer so Tailwind never purges them. */
+
+/* Page transition (app.pageTransition in nuxt.config) */
+.page-enter-active, .page-leave-active { transition: opacity 180ms ease, transform 180ms ease; }
+.page-enter-from { opacity: 0; transform: translateY(6px); }
+.page-leave-to { opacity: 0; transform: translateY(-6px); }
+
+/* Keyframes declare only `from`, so each element ends on its own opacity/transform.
+   Fill is `backwards`, so no transform is left behind to block hover. */
+@keyframes fade-up { from { opacity: 0; transform: translateY(8px); } }
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes float { 50% { transform: translateY(-4px); } }
+@keyframes progress-in { from { transform: translateX(-100%); } }
+
+.card { animation: fade-up 300ms ease-out backwards; }
+.card:nth-child(2) { animation-delay: 40ms; }
+.card:nth-child(3) { animation-delay: 80ms; }
+.card:nth-child(4) { animation-delay: 120ms; }
+.card:nth-child(5) { animation-delay: 160ms; }
+.card:nth-child(6) { animation-delay: 200ms; }
+.card:nth-child(7) { animation-delay: 240ms; }
+.card:nth-child(n+8) { animation-delay: 280ms; }
+
+/* Interactive cards only. The shadow lives on ::after so only its opacity animates. */
+.card-hover { position: relative; transition: transform 200ms ease; }
+.card-hover::after { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: 0 10px 20px -6px rgb(15 23 42 / 0.15); opacity: 0; pointer-events: none; transition: opacity 200ms ease; }
+@media (hover: hover) {
+  .card-hover:hover { transform: translateY(-2px); }
+  .card-hover:hover::after { opacity: 1; }
+}
+
+/* AppModal: backdrop fades; panel slides up as a sheet on phones, scales in from sm up */
+.modal-enter-active, .modal-enter-active .modal-panel { transition: opacity 200ms ease, transform 200ms ease-out; }
+.modal-leave-active, .modal-leave-active .modal-panel { transition: opacity 150ms ease, transform 150ms ease-in; }
+.modal-enter-from, .modal-leave-to { opacity: 0; }
+.modal-enter-from .modal-panel, .modal-leave-to .modal-panel { transform: translateY(100%); }
+@media (min-width: 640px) {
+  .modal-enter-from .modal-panel, .modal-leave-to .modal-panel { transform: translateY(8px) scale(0.96); }
+}
+
+.stat-value { animation: fade-in 500ms ease-out 100ms backwards; }
+.empty-icon { animation: float 3s ease-in-out infinite; }
+.progress-fill { animation: progress-in 700ms ease-out backwards; transition: transform 700ms ease; }
+
+@media (prefers-reduced-motion: reduce) {
+  .card, .stat-value, .empty-icon, .progress-fill { animation: none; }
+  .page-enter-active, .page-leave-active,
+  .modal-enter-active, .modal-leave-active, .modal-enter-active .modal-panel, .modal-leave-active .modal-panel,
+  .card-hover, .card-hover::after, .progress-fill,
+  .btn, .btn-primary, .btn-secondary, .btn-danger, .btn-ghost { transition: none; }
+  .page-enter-from, .page-leave-to, .modal-enter-from, .modal-leave-to { opacity: 1; transform: none; }
+  .modal-enter-from .modal-panel, .modal-leave-to .modal-panel, .card-hover:hover,
+  .btn:active, .btn-primary:active, .btn-secondary:active, .btn-danger:active, .btn-ghost:active { transform: none; }
+}
+
+/* Native <select>: our own chevron with breathing room from the right edge (all selects, incl. DataTable filters). */
+select.input,
+select.input:focus {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  padding-right: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none' stroke='%2364748b' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem 1rem;
+}
+select.input::-ms-expand { display: none; }

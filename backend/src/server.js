@@ -2,4 +2,4 @@ import 'dotenv/config'
 import { app } from './app.js'
 
 const port = Number(process.env.PORT) || 4000
-app.listen(port, () => console.log(`TimeMine API listening on http://localhost:${port}`))
+app.listen(port, () => console.log(`TimeMint API listening on http://localhost:${port}`))
