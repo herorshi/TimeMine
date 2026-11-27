@@ -21,7 +21,7 @@ export const MANUAL_GROUPS = [
     { slug: 'admin-ot', title: 'อนุมัติ OT', icon: '💰', route: '/admin/ot', perm: 'approve.ot' },
     { slug: 'admin-warnings', title: 'ออกใบเตือน', icon: '📝', route: '/admin/warnings', perm: 'warnings.manage' },
     { slug: 'admin-announcements', title: 'จัดการประกาศ', icon: '📣', route: '/admin/announcements', perm: 'announcements.manage' },
-    { slug: 'admin-faces', title: 'ลงทะเบียนใบหน้า', icon: '🧑‍💼', route: '/admin/faces', perm: 'employees.manage' },
+    { slug: 'admin-faces', title: 'ลงทะเบียนใบหน้า', icon: '📸', route: '/admin/faces', perm: 'employees.manage' },
     { slug: 'admin-employees', title: 'จัดการพนักงาน', icon: '👥', route: '/admin/employees', perm: 'employees.manage' },
     { slug: 'admin-holidays', title: 'จัดการวันหยุด', icon: '🗓️', route: '/admin/holidays', perm: 'holidays.manage' },
     { slug: 'admin-kpi', title: 'ประเมิน KPI', icon: '🏅', route: '/admin/kpi', perm: 'kpi.manage' },
